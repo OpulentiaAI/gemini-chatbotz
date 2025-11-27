@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useUIMessages } from "@convex-dev/agent/react";
@@ -9,6 +9,7 @@ import { useScrollToBottom } from "@/components/custom/use-scroll-to-bottom";
 import { PromptInput } from "./prompt-input";
 import { Overview } from "./overview";
 import { DEFAULT_MODEL, type OpenRouterModelId } from "@/lib/ai/openrouter";
+import { ThinkingMessage } from "@/components/ai-elements/thinking-message";
 
 export function Chat({
   id,
@@ -26,7 +27,8 @@ export function Chat({
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const createThread = useAction(api.chat.createNewThread);
-  const sendMessage = useAction(api.chat.sendMessage);
+  // Use streamMessage for realtime streaming with Convex
+  const streamMessage = useAction(api.chat.streamMessage);
 
   const { results: messages, status } = useUIMessages(
     api.chatDb.listMessages,
@@ -36,7 +38,13 @@ export function Chat({
 
   const [messagesContainerRef, messagesEndRef] = useScrollToBottom<HTMLDivElement>();
 
-  const allMessages = messages;
+  // Check if the last message is still streaming (incomplete assistant message)
+  const isStreamingResponse = useMemo(() => {
+    if (!messages || messages.length === 0) return false;
+    const lastMessage = messages[messages.length - 1];
+    // Message is streaming if it's from assistant and status indicates streaming
+    return lastMessage?.role === "assistant" && status === "LoadingMore";
+  }, [messages, status]);
 
   const handleSubmit = useCallback(
     async (value: string, attachments?: File[], modelId?: OpenRouterModelId) => {
@@ -56,7 +64,8 @@ export function Chat({
           }
         }
 
-        await sendMessage({
+        // Use streamMessage for realtime streaming - writes deltas to DB every 100ms
+        await streamMessage({
           threadId: currentThreadId,
           prompt: value,
           userId,
@@ -71,7 +80,7 @@ export function Chat({
         abortControllerRef.current = null;
       }
     },
-    [threadId, createThread, sendMessage, userId, selectedModel]
+    [threadId, createThread, streamMessage, userId, selectedModel]
   );
 
   const handleStop = useCallback(() => {
@@ -88,6 +97,19 @@ export function Chat({
   // Note: The 'id' prop is a page identifier (UUID), not a Convex thread ID.
   // Thread ID is set when a conversation is created via createThread action.
 
+  // Helper to extract reasoning text from message parts
+  const getReasoningFromParts = (parts: any[] | undefined) => {
+    if (!parts) return undefined;
+    const reasoningPart = parts.find((p: any) => p.type === "reasoning");
+    return reasoningPart?.reasoning;
+  };
+
+  // Helper to extract tool invocations from message parts
+  const getToolInvocations = (parts: any[] | undefined) => {
+    if (!parts) return [];
+    return parts.filter((p: any) => p.type === "tool-invocation" || p.type === "tool-result");
+  };
+
   return (
     <div className="flex flex-row justify-center pb-4 md:pb-8 h-dvh bg-background">
       <div className="flex flex-col justify-between items-center gap-4 w-full">
@@ -95,26 +117,29 @@ export function Chat({
           ref={messagesContainerRef}
           className="flex flex-col gap-4 h-full w-dvw items-center overflow-y-scroll"
         >
-          {allMessages.length === 0 && <Overview />}
+          {messages.length === 0 && <Overview />}
 
-          {allMessages.map((message) => (
-            <PreviewMessage
-              key={message.id}
-              chatId={threadId || id}
-              role={message.role}
-              content={message.text || ""}
-              toolInvocations={message.parts?.filter(
-                (part) => part.type === "tool-invocation"
-              )}
-              attachments={[]}
-            />
-          ))}
+          {messages.map((message, index) => {
+            const isLastMessage = index === messages.length - 1;
+            const messageIsStreaming = isLastMessage && message.role === "assistant" && isStreamingResponse;
+            
+            return (
+              <PreviewMessage
+                key={message.id}
+                chatId={threadId || id}
+                role={message.role}
+                content={message.text || ""}
+                toolInvocations={getToolInvocations(message.parts)}
+                attachments={[]}
+                reasoning={getReasoningFromParts(message.parts)}
+                isStreaming={messageIsStreaming}
+              />
+            );
+          })}
 
-          {isLoading && (
-            <div className="flex items-center gap-2 px-4 py-2 text-sm text-gray-500">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-              <span>Thinking...</span>
-            </div>
+          {/* Show thinking indicator when waiting for first response */}
+          {isLoading && !isStreamingResponse && (
+            <ThinkingMessage />
           )}
 
           <div ref={messagesEndRef} className="shrink-0 min-w-[24px] min-h-[24px]" />
@@ -124,7 +149,7 @@ export function Chat({
           <PromptInput
             onSubmit={handleSubmit}
             onStop={handleStop}
-            isLoading={isLoading}
+            isLoading={isLoading || isStreamingResponse}
             placeholder="Ask about flights, weather, code, or anything..."
             selectedModel={selectedModel}
             onModelChange={handleModelChange}

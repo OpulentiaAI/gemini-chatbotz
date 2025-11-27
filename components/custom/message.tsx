@@ -18,22 +18,37 @@ interface MessageAttachment {
   contentType?: string;
 }
 
+// Tool invocation format from @convex-dev/agent
 interface MessageToolInvocation {
-  type?: "tool-invocation";
+  type?: "tool-invocation" | "tool-result";
   toolName: string;
   toolCallId: string;
-  state: string;
+  state?: string;
   args?: Record<string, unknown>;
   result?: unknown;
+  // Additional fields from @convex-dev/agent
+  input?: Record<string, unknown>;
+  output?: unknown;
 }
 
-function getToolStatus(state: string): "pending" | "running" | "complete" | "error" {
+function getToolStatus(part: MessageToolInvocation): "pending" | "running" | "complete" | "error" {
+  // Handle @convex-dev/agent part types
+  if (part.type === "tool-result" || part.result !== undefined || part.output !== undefined) {
+    return "complete";
+  }
+  // Handle state field if present
+  const state = part.state;
   switch (state) {
     case "result":
+    case "output-available":
       return "complete";
     case "call":
     case "partial-call":
+    case "input-streaming":
+    case "input-available":
       return "running";
+    case "output-error":
+      return "error";
     default:
       return "pending";
   }
@@ -86,17 +101,18 @@ export const Message = memo(({
         {toolInvocations && toolInvocations.length > 0 && (
           <div className="flex flex-col gap-4">
             {toolInvocations.map((toolInvocation) => {
-              const { toolName, toolCallId, state } = toolInvocation;
-              const status = getToolStatus(state);
-              const args = (toolInvocation as any).args || {};
-              const result = state === "result" ? (toolInvocation as any).result : undefined;
+              const { toolName, toolCallId } = toolInvocation;
+              const status = getToolStatus(toolInvocation);
+              // Support both args/result (AI SDK) and input/output (@convex-dev/agent) formats
+              const args = toolInvocation.args || toolInvocation.input || {};
+              const result = toolInvocation.result || toolInvocation.output;
 
               return (
                 <ToolView
                   key={toolCallId}
                   toolName={toolName}
                   args={args}
-                  result={result}
+                  result={result as Record<string, unknown> | undefined}
                   status={status}
                 />
               );
