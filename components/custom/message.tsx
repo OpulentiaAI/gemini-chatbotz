@@ -32,24 +32,24 @@ interface MessageToolInvocation {
 }
 
 function getToolStatus(part: MessageToolInvocation): "pending" | "running" | "complete" | "error" {
-  // Handle @convex-dev/agent part types
-  if (part.type === "tool-result" || part.result !== undefined || part.output !== undefined) {
-    return "complete";
-  }
-  // Handle state field if present
+  // @convex-dev/agent tool states: "input-streaming", "input-available", "output-available", "output-error"
   const state = part.state;
   switch (state) {
-    case "result":
     case "output-available":
+    case "result":
       return "complete";
-    case "call":
-    case "partial-call":
-    case "input-streaming":
-    case "input-available":
-      return "running";
     case "output-error":
       return "error";
+    case "input-streaming":
+    case "input-available":
+    case "call":
+    case "partial-call":
+      return "running";
     default:
+      // If output exists, it's complete
+      if (part.output !== undefined || part.result !== undefined) {
+        return "complete";
+      }
       return "pending";
   }
 }

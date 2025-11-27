@@ -38,12 +38,13 @@ export function Chat({
 
   const [messagesContainerRef, messagesEndRef] = useScrollToBottom<HTMLDivElement>();
 
-  // Check if the last message is still streaming (incomplete assistant message)
+  // Check if the last message is still streaming (message.status === "streaming")
   const isStreamingResponse = useMemo(() => {
     if (!messages || messages.length === 0) return false;
     const lastMessage = messages[messages.length - 1];
-    // Message is streaming if it's from assistant and status indicates streaming
-    return lastMessage?.role === "assistant" && status === "LoadingMore";
+    // @convex-dev/agent uses message.status === "streaming" for active streams
+    return lastMessage?.role === "assistant" && 
+      ((lastMessage as any).status === "streaming" || status === "LoadingMore");
   }, [messages, status]);
 
   const handleSubmit = useCallback(
@@ -98,16 +99,29 @@ export function Chat({
   // Thread ID is set when a conversation is created via createThread action.
 
   // Helper to extract reasoning text from message parts
+  // @convex-dev/agent uses { type: "reasoning", text: "...", state: "done" }
   const getReasoningFromParts = (parts: any[] | undefined) => {
     if (!parts) return undefined;
     const reasoningPart = parts.find((p: any) => p.type === "reasoning");
-    return reasoningPart?.reasoning;
+    return reasoningPart?.text; // Note: text field, not reasoning field
   };
 
   // Helper to extract tool invocations from message parts
+  // @convex-dev/agent uses type: "tool-<toolName>" format (e.g., "tool-createDocument")
   const getToolInvocations = (parts: any[] | undefined) => {
     if (!parts) return [];
-    return parts.filter((p: any) => p.type === "tool-invocation" || p.type === "tool-result");
+    return parts
+      .filter((p: any) => typeof p.type === "string" && p.type.startsWith("tool-"))
+      .map((p: any) => ({
+        // Extract toolName from "tool-<toolName>"
+        toolName: p.type.replace("tool-", ""),
+        toolCallId: p.toolCallId || p.id || Math.random().toString(),
+        state: p.state, // "input-available", "output-available", "output-error"
+        args: p.input, // @convex-dev/agent uses "input" not "args"
+        result: p.output, // @convex-dev/agent uses "output" not "result"
+        input: p.input,
+        output: p.output,
+      }));
   };
 
   return (
