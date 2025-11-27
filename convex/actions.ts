@@ -1,0 +1,127 @@
+"use node";
+
+import { internalAction } from "./_generated/server";
+import { v } from "convex/values";
+import { generateObject } from "ai";
+import { google } from "@ai-sdk/google";
+import { z } from "zod";
+
+const geminiFlash = google("gemini-2.5-flash-preview-05-20");
+
+export const generateFlightStatus = internalAction({
+  args: {
+    flightNumber: v.string(),
+    date: v.string(),
+  },
+  handler: async (_ctx, { flightNumber, date }) => {
+    const { object: flightStatus } = await generateObject({
+      model: geminiFlash,
+      prompt: `Flight status for flight number ${flightNumber} on ${date}`,
+      schema: z.object({
+        flightNumber: z.string().describe("Flight number, e.g., BA123, AA31"),
+        departure: z.object({
+          cityName: z.string().describe("Name of the departure city"),
+          airportCode: z.string().describe("IATA code of the departure airport"),
+          airportName: z.string().describe("Full name of the departure airport"),
+          timestamp: z.string().describe("ISO 8601 departure date and time"),
+          terminal: z.string().describe("Departure terminal"),
+          gate: z.string().describe("Departure gate"),
+        }),
+        arrival: z.object({
+          cityName: z.string().describe("Name of the arrival city"),
+          airportCode: z.string().describe("IATA code of the arrival airport"),
+          airportName: z.string().describe("Full name of the arrival airport"),
+          timestamp: z.string().describe("ISO 8601 arrival date and time"),
+          terminal: z.string().describe("Arrival terminal"),
+          gate: z.string().describe("Arrival gate"),
+        }),
+        totalDistanceInMiles: z.number().describe("Total flight distance in miles"),
+      }),
+    });
+    return flightStatus;
+  },
+});
+
+export const generateFlightSearchResults = internalAction({
+  args: {
+    origin: v.string(),
+    destination: v.string(),
+  },
+  handler: async (_ctx, { origin, destination }) => {
+    const { object: flightSearchResults } = await generateObject({
+      model: geminiFlash,
+      prompt: `Generate search results for flights from ${origin} to ${destination}, limit to 4 results`,
+      output: "array",
+      schema: z.object({
+        id: z.string().describe("Unique identifier for the flight, like BA123, AA31, etc."),
+        departure: z.object({
+          cityName: z.string().describe("Name of the departure city"),
+          airportCode: z.string().describe("IATA code of the departure airport"),
+          timestamp: z.string().describe("ISO 8601 departure date and time"),
+        }),
+        arrival: z.object({
+          cityName: z.string().describe("Name of the arrival city"),
+          airportCode: z.string().describe("IATA code of the arrival airport"),
+          timestamp: z.string().describe("ISO 8601 arrival date and time"),
+        }),
+        airlines: z.array(z.string().describe("Airline names, e.g., American Airlines, Emirates")),
+        priceInUSD: z.number().describe("Flight price in US dollars"),
+        numberOfStops: z.number().describe("Number of stops during the flight"),
+      }),
+    });
+    return { flights: flightSearchResults };
+  },
+});
+
+export const generateSeatSelection = internalAction({
+  args: {
+    flightNumber: v.string(),
+  },
+  handler: async (_ctx, { flightNumber }) => {
+    const { object: rows } = await generateObject({
+      model: geminiFlash,
+      prompt: `Simulate available seats for flight number ${flightNumber}, 6 seats on each row and 5 rows in total, adjust pricing based on location of seat`,
+      output: "array",
+      schema: z.array(
+        z.object({
+          seatNumber: z.string().describe("Seat identifier, e.g., 12A, 15C"),
+          priceInUSD: z.number().describe("Seat price in US dollars, less than $99"),
+          isAvailable: z.boolean().describe("Whether the seat is available for booking"),
+        })
+      ),
+    });
+    return { seats: rows };
+  },
+});
+
+export const generateReservationPrice = internalAction({
+  args: {
+    seats: v.array(v.string()),
+    flightNumber: v.string(),
+    departure: v.object({
+      cityName: v.string(),
+      airportCode: v.string(),
+      timestamp: v.string(),
+      gate: v.string(),
+      terminal: v.string(),
+    }),
+    arrival: v.object({
+      cityName: v.string(),
+      airportCode: v.string(),
+      timestamp: v.string(),
+      gate: v.string(),
+      terminal: v.string(),
+    }),
+    passengerName: v.string(),
+  },
+  handler: async (_ctx, props) => {
+    const { object: reservation } = await generateObject({
+      model: geminiFlash,
+      prompt: `Generate price for the following reservation \n\n ${JSON.stringify(props, null, 2)}`,
+      schema: z.object({
+        totalPriceInUSD: z.number().describe("Total reservation price in US dollars"),
+      }),
+    });
+    return reservation;
+  },
+});

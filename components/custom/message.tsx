@@ -16,6 +16,15 @@ import { ListFlights } from "../flights/list-flights";
 import { SelectSeats } from "../flights/select-seats";
 import { VerifyPayment } from "../flights/verify-payment";
 
+type MessageToolInvocation = ToolInvocation | {
+  type: "tool-invocation";
+  toolName: string;
+  toolCallId: string;
+  state: string;
+  args?: any;
+  result?: any;
+};
+
 export const Message = ({
   chatId,
   role,
@@ -26,7 +35,7 @@ export const Message = ({
   chatId: string;
   role: string;
   content: string | ReactNode;
-  toolInvocations: Array<ToolInvocation> | undefined;
+  toolInvocations: Array<MessageToolInvocation> | undefined;
   attachments?: Array<Attachment>;
 }) => {
   return (
