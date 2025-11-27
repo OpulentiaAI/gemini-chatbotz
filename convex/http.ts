@@ -10,7 +10,7 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     const { threadId, prompt, userId } = await request.json();
-    
+
     if (!threadId) {
       return new Response(JSON.stringify({ error: "threadId is required" }), {
         status: 400,
@@ -20,12 +20,12 @@ http.route({
 
     try {
       const { thread } = await flightAgent.continueThread(ctx, { threadId });
-      const result = await thread.generateText(
+      const result = await thread.streamText(
         { prompt },
         { saveStreamDeltas: { returnImmediately: true } }
       );
-      
-      return result.toUIMessageStreamResponse();
+
+      return result.toTextStreamResponse();
     } catch (error) {
       console.error("Chat error:", error);
       return new Response(JSON.stringify({ error: "Failed to process message" }), {
@@ -41,7 +41,7 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     const { threadId, prompt } = await request.json();
-    
+
     if (!threadId) {
       return new Response(JSON.stringify({ error: "threadId is required" }), {
         status: 400,
@@ -51,12 +51,12 @@ http.route({
 
     try {
       const { thread } = await flightAgent.continueThread(ctx, { threadId });
-      const result = await thread.generateText(
+      const result = await thread.streamText(
         { prompt },
         { saveStreamDeltas: { returnImmediately: true, throttleMs: 50 } }
       );
-      
-      return result.toUIMessageStreamResponse();
+
+      return result.toTextStreamResponse();
     } catch (error) {
       console.error("Stream error:", error);
       return new Response(JSON.stringify({ error: "Failed to stream message" }), {

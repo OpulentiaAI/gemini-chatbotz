@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
-import { useAction, useQuery } from "convex/react";
+import { useState, useCallback, useRef } from "react";
+import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useUIMessages, type UIMessage } from "@convex-dev/agent/react";
+import { useUIMessages } from "@convex-dev/agent/react";
 import { Message as PreviewMessage } from "@/components/custom/message";
 import { useScrollToBottom } from "@/components/custom/use-scroll-to-bottom";
 import { PromptInput } from "./prompt-input";
@@ -19,9 +19,9 @@ export function Chat({
   initialMessages?: Array<any>;
   userId?: string;
 }) {
-  const [threadId, setThreadId] = useState<string | null>(id || null);
+  // Thread ID is null until created by @convex-dev/agent (not the same as the page id)
+  const [threadId, setThreadId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [localMessages, setLocalMessages] = useState<UIMessage[]>([]);
   const [selectedModel, setSelectedModel] = useState<OpenRouterModelId>(DEFAULT_MODEL);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -29,14 +29,14 @@ export function Chat({
   const sendMessage = useAction(api.chat.sendMessage);
 
   const { results: messages, status } = useUIMessages(
-    api.chat.listMessages,
+    api.chatDb.listMessages,
     threadId ? { threadId } : "skip",
     { initialNumItems: 50, stream: true }
   );
 
   const [messagesContainerRef, messagesEndRef] = useScrollToBottom<HTMLDivElement>();
 
-  const allMessages = threadId ? messages : localMessages;
+  const allMessages = messages;
 
   const handleSubmit = useCallback(
     async (value: string, attachments?: File[], modelId?: OpenRouterModelId) => {
@@ -85,11 +85,8 @@ export function Chat({
     setSelectedModel(modelId);
   }, []);
 
-  useEffect(() => {
-    if (id && id !== threadId) {
-      setThreadId(id);
-    }
-  }, [id, threadId]);
+  // Note: The 'id' prop is a page identifier (UUID), not a Convex thread ID.
+  // Thread ID is set when a conversation is created via createThread action.
 
   return (
     <div className="flex flex-row justify-center pb-4 md:pb-8 h-dvh bg-background">
@@ -102,14 +99,14 @@ export function Chat({
 
           {allMessages.map((message) => (
             <PreviewMessage
-              key={message.id || message._id}
+              key={message.id}
               chatId={threadId || id}
               role={message.role}
-              content={message.text || message.content || ""}
+              content={message.text || ""}
               toolInvocations={message.parts?.filter(
-                (part: any) => part.type === "tool-invocation"
+                (part) => part.type === "tool-invocation"
               )}
-              attachments={message.attachments}
+              attachments={[]}
             />
           ))}
 

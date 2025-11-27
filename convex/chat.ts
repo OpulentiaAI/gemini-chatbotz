@@ -1,16 +1,10 @@
 "use node";
 
-import { action, mutation, query, internalQuery } from "./_generated/server";
+import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { flightAgent, codeAgent, quickAgent, researchAgent, createAgentWithModel } from "./agent";
-import { components, internal, api } from "./_generated/api";
-import { paginationOptsValidator } from "convex/server";
-import {
-  vStreamArgs,
-  listUIMessages,
-  syncStreams,
-  createThread,
-} from "@convex-dev/agent";
+import { Agent } from "@convex-dev/agent";
+import { internal, api } from "./_generated/api";
 
 const modelValidator = v.optional(v.union(
   v.literal("openai/gpt-4o"),
@@ -30,7 +24,7 @@ const modelValidator = v.optional(v.union(
   v.literal("x-ai/grok-4.1-fast:free")
 ));
 
-function selectAgent(modelId?: string) {
+function selectAgent(modelId?: string): Agent {
   if (!modelId) return flightAgent;
   if (modelId.includes("gpt-4o-mini")) return quickAgent;
   return flightAgent;
@@ -47,75 +41,12 @@ export const createNewThread = action({
       userId: userId ?? "anonymous",
     });
     if (userId) {
-      await ctx.runMutation(internal.chat.saveUserThread, {
+      await ctx.runMutation((internal as any).chatDb.saveUserThread, {
         threadId,
         userId,
       });
     }
     return { threadId };
-  },
-});
-
-export const saveUserThread = mutation({
-  args: {
-    threadId: v.string(),
-    userId: v.string(),
-    title: v.optional(v.string()),
-  },
-  handler: async (ctx, { threadId, userId, title }) => {
-    const existing = await ctx.db
-      .query("userThreads")
-      .withIndex("by_thread", (q) => q.eq("threadId", threadId))
-      .first();
-    if (!existing) {
-      await ctx.db.insert("userThreads", {
-        threadId,
-        userId,
-        title,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-    }
-  },
-});
-
-export const updateThreadTitle = mutation({
-  args: {
-    threadId: v.string(),
-    title: v.string(),
-  },
-  handler: async (ctx, { threadId, title }) => {
-    const thread = await ctx.db
-      .query("userThreads")
-      .withIndex("by_thread", (q) => q.eq("threadId", threadId))
-      .first();
-    if (thread) {
-      await ctx.db.patch(thread._id, { title, updatedAt: Date.now() });
-    }
-  },
-});
-
-export const getUserThreads = query({
-  args: { userId: v.string() },
-  handler: async (ctx, { userId }) => {
-    return await ctx.db
-      .query("userThreads")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .order("desc")
-      .collect();
-  },
-});
-
-export const deleteThread = mutation({
-  args: { threadId: v.string() },
-  handler: async (ctx, { threadId }) => {
-    const thread = await ctx.db
-      .query("userThreads")
-      .withIndex("by_thread", (q) => q.eq("threadId", threadId))
-      .first();
-    if (thread) {
-      await ctx.db.delete(thread._id);
-    }
   },
 });
 
@@ -127,14 +58,13 @@ export const sendMessage = action({
     modelId: modelValidator,
   },
   handler: async (ctx, { threadId, prompt, userId, modelId }) => {
-    const agent = modelId ? createAgentWithModel(modelId) : flightAgent;
+    const agent: Agent = modelId ? createAgentWithModel(modelId) : flightAgent;
     const { thread } = await agent.continueThread(ctx, { threadId });
     const result = await thread.generateText(
-      { prompt },
-      { saveStreamDeltas: true }
+      { prompt }
     );
     if (userId) {
-      await ctx.runMutation(api.chat.updateThreadTitle, {
+      await ctx.runMutation((api as any).chatDb.updateThreadTitle, {
         threadId,
         title: prompt.slice(0, 100),
       });
@@ -155,33 +85,20 @@ export const streamMessage = action({
     modelId: modelValidator,
   },
   handler: async (ctx, { threadId, prompt, userId, modelId }) => {
-    const agent = modelId ? createAgentWithModel(modelId) : flightAgent;
+    const agent: Agent = modelId ? createAgentWithModel(modelId) : flightAgent;
     const { thread } = await agent.continueThread(ctx, { threadId });
-    const result = await thread.generateText(
+    const result = await thread.streamText(
       { prompt },
       { saveStreamDeltas: { throttleMs: 100 } }
     );
     if (userId) {
-      await ctx.runMutation(api.chat.updateThreadTitle, {
+      await ctx.runMutation((api as any).chatDb.updateThreadTitle, {
         threadId,
         title: prompt.slice(0, 100),
       });
     }
     return {
-      text: result.text,
+      text: await result.text,
     };
-  },
-});
-
-export const listMessages = query({
-  args: {
-    threadId: v.string(),
-    paginationOpts: paginationOptsValidator,
-    streamArgs: vStreamArgs,
-  },
-  handler: async (ctx, args) => {
-    const paginated = await listUIMessages(ctx, components.agent, args);
-    const streams = await syncStreams(ctx, components.agent, args);
-    return { ...paginated, streams };
   },
 });
