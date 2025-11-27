@@ -4,13 +4,15 @@ import { Toaster } from "sonner";
 import { Navbar } from "@/components/custom/navbar";
 import { ThemeProvider } from "@/components/custom/theme-provider";
 import { ConvexClientProvider } from "@/components/custom/convex-provider";
+import { ArtifactProvider } from "@/hooks/use-artifact";
+import { ArtifactPanel } from "@/components/custom/artifact-panel";
 
 import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://gemini.vercel.ai"),
-  title: "Next.js Gemini Chatbot",
-  description: "Next.js chatbot template using the AI SDK and Gemini.",
+  title: "Milica",
+  description: "chatbot.",
 };
 
 export default async function RootLayout({
@@ -28,9 +30,12 @@ export default async function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <Toaster position="top-center" />
-            <Navbar />
-            {children}
+            <ArtifactProvider>
+              <Toaster position="top-center" />
+              <Navbar />
+              {children}
+              <ArtifactPanel />
+            </ArtifactProvider>
           </ThemeProvider>
         </ConvexClientProvider>
       </body>

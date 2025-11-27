@@ -3,7 +3,7 @@
 import React from "react";
 import { Plane, CreditCard, MapPin, Ticket, Search, Cloud, FileCode, FileText, Image, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ArtifactViewer, type Artifact } from "./artifact-viewer";
+import { ArtifactPreviewButton } from "./artifact-panel";
 
 interface ToolViewProps {
   toolName: string;
@@ -235,13 +235,17 @@ function DocumentView({ args, result, isLoading }: { args: Record<string, unknow
   }
   if (result && (result as { id?: string; title?: string; kind?: string; content?: string }).id) {
     const artifactResult = result as { id: string; title: string; kind: "text" | "code" | "sheet"; content: string };
-    const artifact: Artifact = {
+    const artifact = {
       id: artifactResult.id,
       title: artifactResult.title || (args.title as string) || "Document",
       kind: artifactResult.kind || (args.kind as "text" | "code" | "sheet") || "text",
       content: artifactResult.content || (args.content as string) || "",
     };
-    return <ArtifactViewer artifact={artifact} />;
+    return (
+      <div className="max-w-md">
+        <ArtifactPreviewButton artifact={artifact} />
+      </div>
+    );
   }
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
