@@ -37,6 +37,10 @@ export function ToolView({ toolName, args, result, status }: ToolViewProps) {
       return <ImageGenerationView args={args} result={result} isLoading={isLoading} />;
     case "webSearch":
       return <WebSearchView args={args} result={result} isLoading={isLoading} />;
+    case "tavilyExtract":
+    case "tavilyCrawl":
+    case "tavilyMap":
+      return <TavilyToolView toolName={toolName} args={args} result={result} isLoading={isLoading} />;
     default:
       return <GenericToolView toolName={toolName} args={args} result={result} isLoading={isLoading} />;
   }
@@ -271,6 +275,12 @@ function ImageGenerationView({ args, isLoading }: { args: Record<string, unknown
 }
 
 function WebSearchView({ args, result, isLoading }: { args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
+  // Tavily search response format
+  const tavilyResult = result as { 
+    results?: Array<{ title: string; url: string; content?: string }>;
+    answer?: string;
+  } | undefined;
+
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
       <div className="flex items-center gap-2 text-emerald-600">
@@ -279,11 +289,56 @@ function WebSearchView({ args, result, isLoading }: { args: Record<string, unkno
       </div>
       <p className="text-sm text-gray-600">Query: {args.query as string}</p>
       {isLoading && <LoadingBar />}
-      {result && Array.isArray((result as { results?: unknown[] }).results) && (
-        <div className="space-y-2">
-          {((result as { results: Array<{ title: string; url: string }> }).results).slice(0, 3).map((r, i) => (
-            <a key={i} href={r.url} className="block text-sm text-blue-600 hover:underline">{r.title}</a>
+      
+      {/* Show AI-generated answer if available */}
+      {tavilyResult?.answer && (
+        <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+          <p className="text-sm text-gray-800">{tavilyResult.answer}</p>
+        </div>
+      )}
+      
+      {/* Show search results */}
+      {tavilyResult?.results && tavilyResult.results.length > 0 && (
+        <div className="space-y-2 mt-3">
+          <p className="text-xs text-gray-500 font-medium">Sources:</p>
+          {tavilyResult.results.slice(0, 5).map((r, i) => (
+            <a 
+              key={i} 
+              href={r.url} 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block p-2 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <p className="text-sm font-medium text-blue-600 hover:underline">{r.title}</p>
+              {r.content && <p className="text-xs text-gray-500 line-clamp-2 mt-1">{r.content}</p>}
+            </a>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TavilyToolView({ toolName, args, result, isLoading }: { toolName: string; args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
+  const toolLabels: Record<string, string> = {
+    tavilyExtract: "Content Extraction",
+    tavilyCrawl: "Website Crawl",
+    tavilyMap: "Site Mapping",
+  };
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
+      <div className="flex items-center gap-2 text-purple-600">
+        <Globe className="w-5 h-5" />
+        <span className="font-medium">{toolLabels[toolName] || toolName}</span>
+      </div>
+      <p className="text-sm text-gray-600">
+        {(args.url || args.urls) as string}
+      </p>
+      {isLoading && <LoadingBar />}
+      {result && (
+        <div className="text-xs bg-purple-50 p-2 rounded max-h-40 overflow-auto">
+          <pre className="whitespace-pre-wrap">{JSON.stringify(result, null, 2)}</pre>
         </div>
       )}
     </div>
