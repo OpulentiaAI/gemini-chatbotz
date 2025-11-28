@@ -1,0 +1,128 @@
+/* Monument Grotesk Font Family */
+
+/* Regular */
+@font-face {
+  font-family: 'Monument Grotesk';
+  src: url('/fonts/monument-grotesk/ABCMonumentGrotesk-Regular-Trial.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monument Grotesk';
+  src: url('/fonts/monument-grotesk/ABCMonumentGrotesk-RegularItalic-Trial.otf') format('opentype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Light */
+@font-face {
+  font-family: 'Monument Grotesk';
+  src: url('/fonts/monument-grotesk/ABCMonumentGrotesk-Light-Trial.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monument Grotesk';
+  src: url('/fonts/monument-grotesk/ABCMonumentGrotesk-LightItalic-Trial.otf') format('opentype');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Medium */
+@font-face {
+  font-family: 'Monument Grotesk';
+  src: url('/fonts/monument-grotesk/ABCMonumentGrotesk-Medium-Trial.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monument Grotesk';
+  src: url('/fonts/monument-grotesk/ABCMonumentGrotesk-MediumItalic-Trial.otf') format('opentype');
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Bold */
+@font-face {
+  font-family: 'Monument Grotesk';
+  src: url('/fonts/monument-grotesk/ABCMonumentGrotesk-Bold-Trial.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monument Grotesk';
+  src: url('/fonts/monument-grotesk/ABCMonumentGrotesk-BoldItalic-Trial.otf') format('opentype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Heavy */
+@font-face {
+  font-family: 'Monument Grotesk';
+  src: url('/fonts/monument-grotesk/ABCMonumentGrotesk-Heavy-Trial.otf') format('opentype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monument Grotesk';
+  src: url('/fonts/monument-grotesk/ABCMonumentGrotesk-HeavyItalic-Trial.otf') format('opentype');
+  font-weight: 800;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Black */
+@font-face {
+  font-family: 'Monument Grotesk';
+  src: url('/fonts/monument-grotesk/ABCMonumentGrotesk-Black-Trial.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monument Grotesk';
+  src: url('/fonts/monument-grotesk/ABCMonumentGrotesk-BlackItalic-Trial.otf') format('opentype');
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Monument Grotesk Mono */
+@font-face {
+  font-family: 'Monument Grotesk Mono';
+  src: url('/fonts/monument-grotesk/ABCMonumentGroteskMono-Regular-Trial.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monument Grotesk Mono';
+  src: url('/fonts/monument-grotesk/ABCMonumentGroteskMono-Medium-Trial.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monument Grotesk Mono';
+  src: url('/fonts/monument-grotesk/ABCMonumentGroteskMono-Bold-Trial.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}

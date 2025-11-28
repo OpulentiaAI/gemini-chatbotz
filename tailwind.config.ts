@@ -9,8 +9,9 @@ const config: Config = {
   ],
   theme: {
     fontFamily: {
-      sans: ["geist"],
-      mono: ["geist-mono"],
+      sans: ['"Monument Grotesk"', 'system-ui', 'sans-serif'],
+      monument: ['"Monument Grotesk"', 'system-ui', 'sans-serif'],
+      mono: ['"Monument Grotesk Mono"', '"geist-mono"', 'monospace'],
     },
     extend: {
       borderRadius: {

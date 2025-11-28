@@ -1,0 +1,12 @@
+{
+  "pageLoaded": true,
+  "chatInputAccessible": false,
+  "responseReceived": false,
+  "errors": [
+    "Could not find chat input field"
+  ],
+  "observations": [
+    "Page loaded successfully",
+    "Checked selectors: textarea[placeholder*=\"message\"], textarea[placeholder*=\"Message\"], input[type=\"text\"], textarea, [contenteditable=\"true\"], input[placeholder*=\"message\"]"
+  ]
+}

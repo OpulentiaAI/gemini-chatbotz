@@ -19,7 +19,8 @@ export type OpenRouterModelId =
   | "meta-llama/llama-3.1-405b-instruct"
   | "mistralai/mistral-large"
   | "deepseek/deepseek-chat"
-  | "x-ai/grok-4.1-fast:free";
+  | "x-ai/grok-4.1-fast:free"
+  | "moonshotai/kimi-k2-thinking";
 
 export interface ModelDefinition {
   id: OpenRouterModelId;
@@ -49,6 +50,16 @@ export const OPENROUTER_MODELS: ModelDefinition[] = [
     maxOutput: 65536,
     pricing: { prompt: 0.00125, completion: 0.005 },
     capabilities: { vision: true, functionCalling: true, streaming: true },
+  },
+  {
+    id: "moonshotai/kimi-k2-thinking",
+    name: "Kimi K2 Thinking",
+    provider: "MoonshotAI",
+    description: "Advanced long-context reasoning model (see OpenRouter for pricing)",
+    contextLength: 256000,
+    maxOutput: 4096,
+    pricing: { prompt: 0.0, completion: 0.0 },
+    capabilities: { functionCalling: true, streaming: true },
   },
   {
     id: "anthropic/claude-opus-4.5",

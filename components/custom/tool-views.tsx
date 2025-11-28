@@ -217,46 +217,10 @@ function WeatherView({ args, result, isLoading }: { args: Record<string, unknown
       </div>
       {isLoading && <LoadingBar />}
       {result && (result as { current?: { temperature_2m?: number } }).current && (
-        <div className="text-3xl font-bold text-sky-600">
-          {(result as { current: { temperature_2m: number } }).current.temperature_2m}°C
+        <div className="text-sm text-gray-700">
+          <span className="font-semibold">{(result as { current?: { temperature_2m?: number } }).current.temperature_2m}°C</span>
         </div>
       )}
-    </div>
-  );
-}
-
-function DocumentView({ args, result, isLoading }: { args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
-  if (isLoading) {
-    return (
-      <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
-        <div className="flex items-center gap-2 text-violet-600">
-          <FileCode className="w-5 h-5" />
-          <span className="font-medium">Creating Document...</span>
-        </div>
-        <LoadingBar />
-      </div>
-    );
-  }
-  if (result && (result as { id?: string; title?: string; kind?: string; content?: string }).id) {
-    const artifactResult = result as { id: string; title: string; kind: "text" | "code" | "sheet"; content: string };
-    const artifact = {
-      id: artifactResult.id,
-      title: artifactResult.title || (args.title as string) || "Document",
-      kind: artifactResult.kind || (args.kind as "text" | "code" | "sheet") || "text",
-      content: artifactResult.content || (args.content as string) || "",
-    };
-    return (
-      <div className="max-w-md">
-        <ArtifactPreviewButton artifact={artifact} />
-      </div>
-    );
-  }
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
-      <div className="flex items-center gap-2 text-violet-600">
-        <FileText className="w-5 h-5" />
-        <span className="font-medium">{(args.title as string) || "Document"}</span>
-      </div>
     </div>
   );
 }

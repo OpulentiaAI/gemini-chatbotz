@@ -8,6 +8,7 @@ import { ArtifactProvider } from "@/hooks/use-artifact";
 import { ArtifactPanel } from "@/components/custom/artifact-panel";
 
 import "./globals.css";
+import "./monument-grotesk.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://gemini.vercel.ai"),
@@ -22,7 +23,7 @@ export default async function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">
+      <body className="antialiased font-monument">
         <ConvexClientProvider>
           <ThemeProvider
             attribute="class"
