@@ -114,21 +114,27 @@ Artifact types: "text" | "code" | "sheet"
 </document_creation>
 
 <web_research>
-You have powerful web research capabilities via Tavily:
+You have powerful web research capabilities via Exa - the search engine built for AI:
 
-- **webSearch**: AI-optimized search returning sources, snippets, and synthesized answers.
-  - Use "basic" depth for quick lookups, "advanced" for thorough research.
-  
-- **tavilyExtract**: Extract clean, structured content from specific URLs.
-  - Great for reading articles, documentation, or pages you've identified.
+- **webSearch**: Ultra-fast semantic search optimized for LLMs with low latency.
+  - Use type "auto" for best results, "neural" for embeddings-based search, "fast" for keyword search, "deep" for thorough research
+  - Supports filtering by category (company, news, research paper, github, etc.)
+  - Returns clean, parsed markdown content instantly
 
-- **tavilyCrawl**: Crawl websites from a base URL to discover and extract multiple pages.
-  - Use for comprehensive site analysis.
+- **exaGetContents**: Extract clean, parsed content from specific URLs.
+  - Returns markdown-formatted text, highlights, and metadata
+  - Perfect for reading articles, documentation, or pages you've identified
 
-- **tavilyMap**: Map website structure/hierarchy without full content extraction.
-  - Use to understand site organization before deeper crawling.
+- **exaFindSimilar**: Find pages similar to a given URL based on semantic meaning.
+  - Uses embeddings to find conceptually similar content
+  - Great for discovering related resources
 
-Combine these tools for multi-step research: search → identify sources → extract details → synthesize.
+- **exaAnswer**: Get direct AI-generated answers to questions with citations.
+  - Perfect for factual queries requiring quick answers
+  - Returns answer with source citations
+
+Combine these tools for multi-step research: search → get contents → find similar → synthesize.
+Exa is optimized for AI applications with superior semantic understanding and lower latency than traditional search.
 </web_research>
 
 <utility_tools>
@@ -163,50 +169,69 @@ Make creative, distinctive choices that surprise and delight. Vary themes, fonts
 </frontend_aesthetics>
 `;
 
-const tavilySearch = createTool({
-  description: "Advanced AI-optimized web search for real-time information. Returns sources, snippets, and AI answer.",
+const exaSearch = createTool({
+  description: "Ultra-fast AI-optimized web search with semantic understanding. Exa returns high-quality, relevant results optimized for LLMs with low latency.",
   args: z.object({
-    query: z.string().describe("Search query"),
-    searchDepth: z.enum(["basic", "advanced"]).optional().describe("Search depth"),
-    maxResults: z.number().optional().describe("Max results (default 5)"),
-    includeAnswer: z.boolean().optional().describe("Include AI-generated answer"),
+    query: z.string().describe("Search query - natural language works best"),
+    numResults: z.number().optional().describe("Number of results to return (default 10, max 100)"),
+    type: z.enum(["auto", "neural", "fast", "deep"]).optional().describe("Search type: auto (best), neural (embeddings), fast (keyword), deep (thorough)"),
+    category: z.enum(["company", "research paper", "news", "pdf", "github", "personal site", "linkedin profile", "financial report"]).optional().describe("Filter by content category"),
+    useAutoprompt: z.boolean().optional().describe("Let Exa automatically enhance your query"),
+    text: z.boolean().optional().describe("Include full text content (cleaned markdown)"),
   }),
-  handler: async (_ctx, { query, searchDepth = "basic", maxResults = 5, includeAnswer = true }) => {
-    if (!process.env.TAVILY_API_KEY) {
-      throw new Error("TAVILY_API_KEY not set");
+  handler: async (_ctx, { query, numResults = 10, type = "auto", category, useAutoprompt, text = true }) => {
+    if (!process.env.EXA_API_KEY) {
+      throw new Error("EXA_API_KEY not set");
     }
-    const body = {
-      api_key: process.env.TAVILY_API_KEY,
+    const body: Record<string, unknown> = {
       query,
-      search_depth: searchDepth,
-      max_results: maxResults,
-      include_answer: includeAnswer,
+      numResults,
+      type,
+      useAutoprompt,
+      contents: text ? { text: { maxCharacters: 3000 } } : undefined,
     };
-    const res = await fetch("https://api.tavily.com/search", {
+    if (category) body.category = category;
+
+    const res = await fetch("https://api.exa.ai/search", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.EXA_API_KEY,
+      },
       body: JSON.stringify(body),
     });
     if (!res.ok) {
       const err = await res.text();
-      throw new Error(`Tavily search failed: ${err}`);
+      throw new Error(`Exa search failed: ${err}`);
     }
     return await res.json();
   },
 });
 
-const tavilyExtract = createTool({
-  description: "Extract clean structured content from URLs (markdown/text optimized for AI).",
+const exaGetContents = createTool({
+  description: "Extract clean, parsed content from specific URLs. Returns markdown-formatted text, highlights, and metadata.",
   args: z.object({
-    urls: z.array(z.string()).min(1).describe("URLs to extract"),
-    extractDepth: z.enum(["basic", "advanced"]).optional().describe("Extraction depth"),
+    ids: z.array(z.string()).min(1).describe("URLs or Exa IDs to get content from"),
+    text: z.boolean().optional().describe("Include full text content (default true)"),
+    summary: z.boolean().optional().describe("Include AI-generated summary"),
+    highlights: z.boolean().optional().describe("Include relevant highlights/excerpts"),
   }),
-  handler: async (_ctx, { urls, extractDepth = "basic" }) => {
-    if (!process.env.TAVILY_API_KEY) throw new Error("TAVILY_API_KEY not set");
-    const body = { api_key: process.env.TAVILY_API_KEY, urls, extract_depth: extractDepth };
-    const res = await fetch("https://api.tavily.com/extract", {
+  handler: async (_ctx, { ids, text = true, summary, highlights }) => {
+    if (!process.env.EXA_API_KEY) throw new Error("EXA_API_KEY not set");
+    const body: Record<string, unknown> = {
+      ids,
+      contents: {
+        text: text ? { maxCharacters: 3000 } : undefined,
+        summary: summary ? {} : undefined,
+        highlights: highlights ? {} : undefined,
+      },
+    };
+    const res = await fetch("https://api.exa.ai/contents", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.EXA_API_KEY,
+      },
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(await res.text());
@@ -214,19 +239,29 @@ const tavilyExtract = createTool({
   },
 });
 
-const tavilyCrawl = createTool({
-  description: "Crawl website from base URL, discover/extract multiple pages intelligently.",
+const exaFindSimilar = createTool({
+  description: "Find pages similar to a given URL based on semantic meaning and content.",
   args: z.object({
-    url: z.string().describe("Base URL to crawl"),
-    maxDepth: z.number().min(1).max(5).optional().describe("Max crawl depth (1-5)"),
-    instructions: z.string().optional().describe("Crawl instructions"),
+    url: z.string().describe("URL to find similar pages to"),
+    numResults: z.number().optional().describe("Number of similar results (default 10)"),
+    category: z.enum(["company", "research paper", "news", "pdf", "github", "personal site", "linkedin profile", "financial report"]).optional().describe("Filter by category"),
+    text: z.boolean().optional().describe("Include full text content"),
   }),
-  handler: async (_ctx, { url, maxDepth = 1, instructions }) => {
-    if (!process.env.TAVILY_API_KEY) throw new Error("TAVILY_API_KEY not set");
-    const body = { api_key: process.env.TAVILY_API_KEY, url, max_depth: maxDepth, instructions };
-    const res = await fetch("https://api.tavily.com/crawl", {
+  handler: async (_ctx, { url, numResults = 10, category, text = true }) => {
+    if (!process.env.EXA_API_KEY) throw new Error("EXA_API_KEY not set");
+    const body: Record<string, unknown> = {
+      url,
+      numResults,
+      contents: text ? { text: { maxCharacters: 3000 } } : undefined,
+    };
+    if (category) body.category = category;
+
+    const res = await fetch("https://api.exa.ai/findSimilar", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.EXA_API_KEY,
+      },
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(await res.text());
@@ -234,19 +269,24 @@ const tavilyCrawl = createTool({
   },
 });
 
-const tavilyMap = createTool({
-  description: "Map website structure/hierarchy from base URL (discover pages without full content).",
+const exaAnswer = createTool({
+  description: "Get a direct AI-generated answer to a question using Exa's Answer API. Perfect for factual queries.",
   args: z.object({
-    url: z.string().describe("Base URL to map"),
-    maxDepth: z.number().min(1).max(5).optional().describe("Max map depth"),
-    instructions: z.string().optional().describe("Mapping instructions"),
+    query: z.string().describe("The question to answer"),
+    text: z.boolean().optional().describe("Include source text in response"),
   }),
-  handler: async (_ctx, { url, maxDepth = 1, instructions }) => {
-    if (!process.env.TAVILY_API_KEY) throw new Error("TAVILY_API_KEY not set");
-    const body = { api_key: process.env.TAVILY_API_KEY, url, max_depth: maxDepth, instructions };
-    const res = await fetch("https://api.tavily.com/map", {
+  handler: async (_ctx, { query, text = true }) => {
+    if (!process.env.EXA_API_KEY) throw new Error("EXA_API_KEY not set");
+    const body = {
+      query,
+      text,
+    };
+    const res = await fetch("https://api.exa.ai/answer", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.EXA_API_KEY,
+      },
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(await res.text());
@@ -443,10 +483,10 @@ const baseTools = {
       };
     },
   }),
-  webSearch: tavilySearch,
-  tavilyExtract,
-  tavilyCrawl,
-  tavilyMap,
+  webSearch: exaSearch,
+  exaGetContents,
+  exaFindSimilar,
+  exaAnswer,
 };
 
 export function createAgentWithModel(modelId: OpenRouterModelId) {
