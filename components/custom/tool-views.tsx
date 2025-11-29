@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Plane, CreditCard, MapPin, Ticket, Search, Cloud, FileCode, FileText, Image, Globe } from "lucide-react";
+import { Plane, CreditCard, MapPin, Ticket, Search, Cloud, FileCode, FileText, Image, Globe, CheckCircle, ShieldCheck, Sparkles, Code, Table } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ArtifactPreviewButton } from "./artifact-panel";
 
@@ -24,6 +24,8 @@ export function ToolView({ toolName, args, result, status }: ToolViewProps) {
       return <ReservationView args={args} result={result} isLoading={isLoading} />;
     case "authorizePayment":
       return <PaymentView args={args} result={result} isLoading={isLoading} />;
+    case "verifyPayment":
+      return <VerifyPaymentView args={args} result={result} isLoading={isLoading} />;
     case "displayBoardingPass":
       return <BoardingPassView args={args} result={result} isLoading={isLoading} />;
     case "displayFlightStatus":
@@ -144,6 +146,30 @@ function PaymentView({ args, isLoading }: { args: Record<string, unknown>; resul
   );
 }
 
+function VerifyPaymentView({ args, result, isLoading }: { args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
+  const hasCompleted = result && (result as { hasCompletedPayment?: boolean }).hasCompletedPayment;
+  
+  return (
+    <div className="rounded-xl border border-chocolate-200 dark:border-chocolate-700 bg-chocolate-50 dark:bg-chocolate-900 p-4 space-y-3">
+      <div className="flex items-center gap-2 text-chocolate-600 dark:text-chocolate-400">
+        <ShieldCheck className="w-5 h-5" />
+        <span className="font-medium">Payment Verification</span>
+      </div>
+      <p className="text-sm text-chocolate-600 dark:text-chocolate-400">Reservation: {args.reservationId as string}</p>
+      {isLoading && <LoadingBar />}
+      {result && (
+        <div className={`flex items-center gap-2 text-sm ${hasCompleted ? 'text-green-600 dark:text-green-400' : 'text-chocolate-500'}`}>
+          {hasCompleted ? (
+            <><CheckCircle className="w-4 h-4" /> Payment verified successfully</>
+          ) : (
+            <>Payment pending verification...</>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BoardingPassView({ args }: { args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
   const departure = args.departure as { cityName: string; airportCode: string; timestamp: string; terminal: string; gate: string } | undefined;
   const arrival = args.arrival as { cityName: string; airportCode: string } | undefined;
@@ -225,15 +251,23 @@ function WeatherView({ args, result, isLoading }: { args: Record<string, unknown
   );
 }
 
-function ImageGenerationView({ args, isLoading }: { args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
+function ImageGenerationView({ args, result, isLoading }: { args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
+  const style = (args.style as string) || "realistic";
+  
   return (
     <div className="rounded-xl border border-chocolate-200 dark:border-chocolate-700 bg-chocolate-50 dark:bg-chocolate-900 p-4 space-y-3">
       <div className="flex items-center gap-2 text-chocolate-600 dark:text-chocolate-400">
-        <Image className="w-5 h-5" />
+        <Sparkles className="w-5 h-5" />
         <span className="font-medium">Generating Image</span>
       </div>
       <p className="text-sm text-chocolate-600 dark:text-chocolate-400">{args.prompt as string}</p>
+      <p className="text-xs text-chocolate-400">Style: {style}</p>
       {isLoading && <LoadingBar />}
+      {result && (
+        <div className="text-xs text-chocolate-500">
+          Image generation requested
+        </div>
+      )}
     </div>
   );
 }
@@ -242,11 +276,14 @@ function DocumentView({ args, result, isLoading }: { args: Record<string, unknow
   const title = (args.title as string) || "Untitled Document";
   const kind = (args.kind as string) || "text";
   
+  // Choose icon based on document kind
+  const KindIcon = kind === "code" ? Code : kind === "sheet" ? Table : FileText;
+  
   return (
     <div className="rounded-xl border border-chocolate-200 dark:border-chocolate-700 bg-chocolate-50 dark:bg-chocolate-900 p-4 space-y-3">
       <div className="flex items-center gap-2 text-chocolate-600 dark:text-chocolate-400">
-        <FileText className="w-5 h-5" />
-        <span className="font-medium">{args.id ? "Updating" : "Creating"} Document</span>
+        <KindIcon className="w-5 h-5" />
+        <span className="font-medium">{args.id ? "Updating" : "Creating"} {kind === "code" ? "Code" : kind === "sheet" ? "Spreadsheet" : "Document"}</span>
       </div>
       <div className="text-sm space-y-1">
         <p className="font-medium text-chocolate-800 dark:text-chocolate-200">{title}</p>
@@ -254,8 +291,9 @@ function DocumentView({ args, result, isLoading }: { args: Record<string, unknow
       </div>
       {isLoading && <LoadingBar />}
       {result && (result as { id?: string }).id && (
-        <div className="text-xs text-chocolate-500">
-          Document ID: {(result as { id: string }).id}
+        <div className="flex items-center gap-2 text-xs text-chocolate-500">
+          <CheckCircle className="w-3 h-3" />
+          <span>{args.id ? "Updated" : "Created"} successfully</span>
         </div>
       )}
     </div>
