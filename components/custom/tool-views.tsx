@@ -430,10 +430,12 @@ function ImageGenerationView({ args, result, isLoading }: { args: Record<string,
 function DocumentView({ args, result, isLoading }: { args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
   const title = (args.title as string) || "Untitled Document";
   const kind = (args.kind as string) || "text";
-  
+  const content = (args.content as string) || "";
+  const resultData = result as { id?: string; content?: string } | undefined;
+
   // Choose icon based on document kind
   const KindIcon = kind === "code" ? Code : kind === "sheet" ? Table : FileText;
-  
+
   return (
     <div className="rounded-xl border border-chocolate-200 dark:border-chocolate-700 bg-chocolate-50 dark:bg-chocolate-900 p-4 space-y-3">
       <div className="flex items-center gap-2 text-chocolate-600 dark:text-chocolate-400">
@@ -444,11 +446,22 @@ function DocumentView({ args, result, isLoading }: { args: Record<string, unknow
         <p className="font-medium text-chocolate-800 dark:text-chocolate-200">{title}</p>
         <p className="text-chocolate-500 text-xs uppercase">{kind}</p>
       </div>
-      {isLoading && <LoadingBar />}
-      {result && (result as { id?: string }).id && (
-        <div className="flex items-center gap-2 text-xs text-chocolate-500">
-          <CheckCircle className="w-3 h-3" />
-          <span>{args.id ? "Updated" : "Created"} successfully</span>
+      {isLoading && <LoadingIndicator label={`${args.id ? "Updating" : "Creating"} document...`} />}
+      {resultData?.id && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-xs text-chocolate-500">
+            <CheckCircle className="w-3 h-3" />
+            <span>{args.id ? "Updated" : "Created"} successfully</span>
+          </div>
+          <ArtifactPreviewButton
+            artifact={{
+              id: resultData.id,
+              title,
+              kind: kind as "code" | "text" | "sheet",
+              content: resultData.content || content,
+              language: kind === "code" ? (args.description as string)?.match(/\.(tsx?|jsx?|py|java|go|rust|cpp|c|rb|php|swift|kt)$/i)?.[1] : undefined,
+            }}
+          />
         </div>
       )}
     </div>
