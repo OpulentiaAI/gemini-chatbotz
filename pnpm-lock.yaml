@@ -29,6 +29,9 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@19.0.0-rc-7771d3a7-20240827)
+      '@exalabs/ai-sdk':
+        specifier: ^1.0.4
+        version: 1.0.4(ai@5.0.102(zod@3.25.76))
       '@floating-ui/dom':
         specifier: ^1.7.4
         version: 1.7.4
@@ -1104,6 +1107,11 @@ packages:
   '@eslint/js@8.57.1':
     resolution: {integrity: sha512-d9zaMRSTIKDLhctzH12MtXvJKSSUhaHcjV+2Z+GK+EEY7XKpP5yR4x+N3TAcHTcu963nIr+TMcCb4DBCYX1z6Q==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+
+  '@exalabs/ai-sdk@1.0.4':
+    resolution: {integrity: sha512-BftMFleSjgGFvCOEmVryqAFHyNq4hvZ38xlb882i2iPXRzt/jHjPUwrcQ3rOoAkCN/iSID/2p7syP1C0+Lmi+A==}
+    peerDependencies:
+      ai: ^5.0.83
 
   '@fastify/busboy@2.1.1':
     resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
@@ -6078,6 +6086,11 @@ snapshots:
       - supports-color
 
   '@eslint/js@8.57.1': {}
+
+  '@exalabs/ai-sdk@1.0.4(ai@5.0.102(zod@3.25.76))':
+    dependencies:
+      ai: 5.0.102(zod@3.25.76)
+      zod: 3.25.76
 
   '@fastify/busboy@2.1.1': {}
 
