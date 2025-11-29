@@ -25,7 +25,8 @@ type OpenRouterModelId =
   | "meta-llama/llama-3.1-405b-instruct"
   | "mistralai/mistral-large"
   | "deepseek/deepseek-chat"
-  | "x-ai/grok-4.1-fast:free";
+  | "x-ai/grok-4.1-fast:free"
+  | "moonshotai/kimi-k2-thinking";
 
 const baseInstructions = `
 <core_identity>
