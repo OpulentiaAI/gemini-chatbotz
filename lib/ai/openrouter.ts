@@ -4,7 +4,7 @@ export const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
-export type OpenRouterModelId = 
+export type OpenRouterModelId =
   | "openai/gpt-4o"
   | "openai/gpt-4o-mini"
   | "openai/gpt-4-turbo"
@@ -20,7 +20,12 @@ export type OpenRouterModelId =
   | "mistralai/mistral-large"
   | "deepseek/deepseek-chat"
   | "x-ai/grok-4.1-fast:free"
-  | "moonshotai/kimi-k2-thinking";
+  | "moonshotai/kimi-k2-thinking"
+  | "prime-intellect/intellect-3"
+  | "minimax/minimax-m2"
+  | "x-ai/grok-code-fast-1"
+  | "z-ai/glm-4.6"
+  | "qwen/qwen3-vl-235b-a22b-instruct";
 
 export interface ModelDefinition {
   id: OpenRouterModelId;
@@ -190,6 +195,56 @@ export const OPENROUTER_MODELS: ModelDefinition[] = [
     maxOutput: 4096,
     pricing: { prompt: 0.00014, completion: 0.00028 },
     capabilities: { functionCalling: true, streaming: true },
+  },
+  {
+    id: "prime-intellect/intellect-3",
+    name: "Intellect-3",
+    provider: "Prime Intellect",
+    description: "Advanced reasoning and analysis model",
+    contextLength: 128000,
+    maxOutput: 8192,
+    pricing: { prompt: 0.0, completion: 0.0 },
+    capabilities: { functionCalling: true, streaming: true },
+  },
+  {
+    id: "minimax/minimax-m2",
+    name: "MiniMax M2",
+    provider: "MiniMax",
+    description: "Efficient multi-modal model",
+    contextLength: 32000,
+    maxOutput: 4096,
+    pricing: { prompt: 0.0, completion: 0.0 },
+    capabilities: { vision: true, functionCalling: true, streaming: true },
+  },
+  {
+    id: "x-ai/grok-code-fast-1",
+    name: "Grok Code Fast",
+    provider: "xAI",
+    description: "Fast code generation and analysis model",
+    contextLength: 131072,
+    maxOutput: 16384,
+    pricing: { prompt: 0.0, completion: 0.0 },
+    capabilities: { functionCalling: true, streaming: true },
+  },
+  {
+    id: "z-ai/glm-4.6",
+    name: "GLM-4.6",
+    provider: "Zhipu AI",
+    description: "General language model with strong reasoning",
+    contextLength: 128000,
+    maxOutput: 4096,
+    pricing: { prompt: 0.0, completion: 0.0 },
+    capabilities: { functionCalling: true, streaming: true },
+  },
+  {
+    id: "qwen/qwen3-vl-235b-a22b-instruct",
+    name: "Qwen3 VL 235B",
+    provider: "Qwen",
+    description: "Large-scale vision-language model",
+    contextLength: 32000,
+    maxOutput: 8192,
+    pricing: { prompt: 0.0, completion: 0.0 },
+    capabilities: { vision: true, functionCalling: true, streaming: true },
   },
 ];
 

@@ -1,7 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { Plane, CreditCard, MapPin, Ticket, Search, Cloud, FileCode, FileText, Image, Globe, CheckCircle, ShieldCheck, Sparkles, Code, Table } from "lucide-react";
+import { Snippet, SnippetHeader, SnippetCopyButton, SnippetTabsList, SnippetTabsTrigger, SnippetTabsContent } from "@/components/kibo-ui/snippet";
+import { Spinner } from "@/components/kibo-ui/spinner";
+import { Status, StatusIndicator, StatusLabel } from "@/components/kibo-ui/status";
+import { TableProvider, TableHeader, TableHeaderGroup, TableHead, TableColumnHeader, TableBody, TableRow, TableCell, type ColumnDef } from "@/components/kibo-ui/table";
 import { cn } from "@/lib/utils";
 import { ArtifactPreviewButton } from "./artifact-panel";
 
@@ -10,6 +14,53 @@ interface ToolViewProps {
   args: Record<string, unknown>;
   result?: Record<string, unknown>;
   status: "pending" | "running" | "complete" | "error";
+}
+
+function LoadingIndicator({ label = "Loading..." }: { label?: string }) {
+  return (
+    <div className="flex items-center gap-2 text-sm text-chocolate-500">
+      <Spinner variant="ellipsis" className="text-chocolate-600" size={16} />
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function JsonSnippet({
+  args,
+  result,
+  label,
+}: {
+  args: Record<string, unknown>;
+  result?: Record<string, unknown>;
+  label: string;
+}) {
+  const argsJson = JSON.stringify(args, null, 2);
+  const resultJson = JSON.stringify(result ?? {}, null, 2);
+
+  return (
+    <Snippet
+      className="bg-white/70 dark:bg-chocolate-950/60 border-chocolate-200 dark:border-chocolate-800"
+      defaultValue="args"
+    >
+      <SnippetHeader className="bg-chocolate-100 dark:bg-chocolate-800">
+        <div className="text-xs font-medium text-chocolate-600 dark:text-chocolate-200">{label}</div>
+        <SnippetCopyButton
+          className="text-chocolate-500 hover:text-chocolate-800"
+          value={`${argsJson}\n${resultJson}`}
+        />
+      </SnippetHeader>
+      <SnippetTabsList>
+        <SnippetTabsTrigger value="args">Args</SnippetTabsTrigger>
+        <SnippetTabsTrigger value="result">Result</SnippetTabsTrigger>
+      </SnippetTabsList>
+      <SnippetTabsContent className="bg-chocolate-50 dark:bg-chocolate-900" value="args">
+        <pre className="text-xs whitespace-pre-wrap text-chocolate-700 dark:text-chocolate-200">{argsJson}</pre>
+      </SnippetTabsContent>
+      <SnippetTabsContent className="bg-chocolate-50 dark:bg-chocolate-900" value="result">
+        <pre className="text-xs whitespace-pre-wrap text-chocolate-700 dark:text-chocolate-200">{resultJson}</pre>
+      </SnippetTabsContent>
+    </Snippet>
+  );
 }
 
 export function ToolView({ toolName, args, result, status }: ToolViewProps) {
@@ -48,14 +99,48 @@ export function ToolView({ toolName, args, result, status }: ToolViewProps) {
   }
 }
 
+type FlightOption = { flightNumber: string; price: number; departureTime: string };
+
 function SearchFlightsView({ args, result, isLoading }: { args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
+  const flights = useMemo<FlightOption[]>(() => {
+    if (!result || !Array.isArray(result.flights)) return [];
+    return (result.flights as FlightOption[]).slice(0, 5);
+  }, [result]);
+
+  const flightColumns = useMemo<ColumnDef<FlightOption>[]>(
+    () => [
+      {
+        accessorKey: "flightNumber",
+        header: ({ column }) => <TableColumnHeader column={column} title="Flight" />,
+        cell: ({ row }) => (
+          <span className="font-semibold text-chocolate-800 dark:text-chocolate-100">{row.original.flightNumber}</span>
+        ),
+      },
+      {
+        accessorKey: "departureTime",
+        header: ({ column }) => <TableColumnHeader column={column} title="Departure" />,
+        cell: ({ row }) => (
+          <span className="text-chocolate-600 dark:text-chocolate-300">{row.original.departureTime}</span>
+        ),
+      },
+      {
+        accessorKey: "price",
+        header: ({ column }) => <TableColumnHeader column={column} title="Price" />,
+        cell: ({ row }) => (
+          <span className="text-chocolate-700 dark:text-chocolate-200 font-medium">${row.original.price}</span>
+        ),
+      },
+    ],
+    [],
+  );
+
   return (
-    <div className="rounded-xl border border-chocolate-200 dark:border-chocolate-700 bg-chocolate-50 dark:bg-chocolate-900 p-4 space-y-3">
+    <div className="rounded-xl border border-chocolate-200 dark:border-chocolate-700 bg-chocolate-50 dark:bg-chocolate-900 p-4 space-y-4">
       <div className="flex items-center gap-2 text-chocolate-600 dark:text-chocolate-400">
         <Search className="w-5 h-5" />
         <span className="font-medium">Searching Flights</span>
       </div>
-      <div className="flex items-center gap-4 text-sm">
+      <div className="flex flex-wrap items-center gap-4 text-sm text-chocolate-700 dark:text-chocolate-300">
         <div className="flex items-center gap-1">
           <MapPin className="w-4 h-4 text-chocolate-400" />
           <span>{args.origin as string}</span>
@@ -66,45 +151,112 @@ function SearchFlightsView({ args, result, isLoading }: { args: Record<string, u
           <span>{args.destination as string}</span>
         </div>
       </div>
-      {isLoading && <LoadingBar />}
-      {result && Array.isArray(result.flights) && (
-        <div className="space-y-2 mt-3">
-          {(result.flights as Array<{ flightNumber: string; price: number; departureTime: string }>).slice(0, 3).map((flight, i) => (
-            <div key={i} className="flex justify-between items-center p-2 rounded-lg bg-chocolate-100 dark:bg-chocolate-800 text-sm">
-              <span className="font-medium">{flight.flightNumber}</span>
-              <span className="text-chocolate-600 dark:text-chocolate-400">{flight.departureTime}</span>
-              <span className="text-chocolate-700 dark:text-chocolate-300 font-medium">${flight.price}</span>
-            </div>
-          ))}
-        </div>
+      {isLoading && <LoadingIndicator label="Searching flights..." />}
+      {!!flights.length && (
+        <TableProvider
+          className="border border-chocolate-200 dark:border-chocolate-700 rounded-xl overflow-hidden"
+          columns={flightColumns}
+          data={flights}
+        >
+          <TableHeader className="bg-chocolate-100 dark:bg-chocolate-800">
+            {({ headerGroup }) => (
+              <TableHeaderGroup headerGroup={headerGroup}>
+                {({ header }) => (
+                  <TableHead
+                    className="text-chocolate-600 dark:text-chocolate-200"
+                    header={header}
+                  />
+                )}
+              </TableHeaderGroup>
+            )}
+          </TableHeader>
+          <TableBody className="bg-white dark:bg-chocolate-950">
+            {({ row }) => (
+              <TableRow
+                className="hover:bg-chocolate-50 dark:hover:bg-chocolate-900"
+                row={row}
+              >
+                {({ cell }) => (
+                  <TableCell
+                    cell={cell}
+                    className="py-3 text-chocolate-800 dark:text-chocolate-100"
+                  />
+                )}
+              </TableRow>
+            )}
+          </TableBody>
+        </TableProvider>
       )}
+      <JsonSnippet args={args} result={result} label="Flight query" />
     </div>
   );
 }
 
+type SeatInfo = { seat: string; status: "online" | "offline" };
+
 function SelectSeatsView({ args, result, isLoading }: { args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
+  const seatData = useMemo<SeatInfo[]>(() => {
+    const seatMap = (result as { seatMap?: string[][] })?.seatMap;
+    if (!seatMap) return [];
+    return seatMap.flat().map((seat, index) => ({
+      seat: seat === "X" ? `Seat ${index + 1}` : seat,
+      status: seat === "X" ? "offline" : "online",
+    }));
+  }, [result]);
+
+  const seatColumns = useMemo<ColumnDef<SeatInfo>[]>(
+    () => [
+      {
+        accessorKey: "seat",
+        header: ({ column }) => <TableColumnHeader column={column} title="Seat" />,
+        cell: ({ row }) => row.original.seat,
+      },
+      {
+        accessorKey: "status",
+        header: ({ column }) => <TableColumnHeader column={column} title="Status" />,
+        cell: ({ row }) => (
+          <Status status={row.original.status} className="text-xs px-2 py-1">
+            <StatusIndicator />
+            <StatusLabel>{row.original.status === "online" ? "Available" : "Reserved"}</StatusLabel>
+          </Status>
+        ),
+      },
+    ],
+    [],
+  );
+
   return (
-    <div className="rounded-xl border border-chocolate-200 dark:border-chocolate-700 bg-chocolate-50 dark:bg-chocolate-900 p-4 space-y-3">
+    <div className="rounded-xl border border-chocolate-200 dark:border-chocolate-700 bg-chocolate-50 dark:bg-chocolate-900 p-4 space-y-4">
       <div className="flex items-center gap-2 text-chocolate-600 dark:text-chocolate-400">
         <Ticket className="w-5 h-5" />
         <span className="font-medium">Seat Selection - {args.flightNumber as string}</span>
       </div>
-      {isLoading && <LoadingBar />}
-      {result && (result as { seatMap?: string[][] }).seatMap && (
-        <div className="grid grid-cols-6 gap-1 max-w-xs mx-auto">
-          {(result as { seatMap: string[][] }).seatMap.flat().map((seat, i) => (
-            <div
-              key={i}
-              className={cn(
-                "w-8 h-8 rounded flex items-center justify-center text-xs font-medium",
-                seat === "X" ? "bg-chocolate-200 dark:bg-chocolate-700 text-chocolate-400" : "bg-chocolate-100 dark:bg-chocolate-800 text-chocolate-700 dark:text-chocolate-300 cursor-pointer hover:bg-chocolate-200 dark:hover:bg-chocolate-700"
-              )}
-            >
-              {seat}
-            </div>
-          ))}
-        </div>
+      {isLoading && <LoadingIndicator label="Fetching seat map..." />}
+      {!!seatData.length && (
+        <TableProvider
+          columns={seatColumns}
+          data={seatData}
+          className="border border-chocolate-200 dark:border-chocolate-700 rounded-xl"
+        >
+          <TableHeader className="bg-chocolate-100 dark:bg-chocolate-800">
+            {({ headerGroup }) => (
+              <TableHeaderGroup headerGroup={headerGroup}>
+                {({ header }) => (
+                  <TableHead header={header} className="text-chocolate-600 dark:text-chocolate-200" />
+                )}
+              </TableHeaderGroup>
+            )}
+          </TableHeader>
+          <TableBody className="bg-white dark:bg-chocolate-950">
+            {({ row }) => (
+              <TableRow row={row} className="hover:bg-chocolate-50 dark:hover:bg-chocolate-900">
+                {({ cell }) => <TableCell cell={cell} className="py-3" />}
+              </TableRow>
+            )}
+          </TableBody>
+        </TableProvider>
       )}
+      <JsonSnippet args={args} result={result} label="Seat selection" />
     </div>
   );
 }
@@ -112,8 +264,10 @@ function SelectSeatsView({ args, result, isLoading }: { args: Record<string, unk
 function ReservationView({ args, result, isLoading }: { args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
   const departure = args.departure as { cityName: string; airportCode: string; timestamp: string } | undefined;
   const arrival = args.arrival as { cityName: string; airportCode: string; timestamp: string } | undefined;
+  const price = (result as { totalPriceInUSD?: number })?.totalPriceInUSD;
+
   return (
-    <div className="rounded-xl border border-chocolate-200 dark:border-chocolate-700 bg-chocolate-50 dark:bg-chocolate-900 p-4 space-y-3">
+    <div className="rounded-xl border border-chocolate-200 dark:border-chocolate-700 bg-chocolate-50 dark:bg-chocolate-900 p-4 space-y-4">
       <div className="flex items-center gap-2 text-chocolate-600 dark:text-chocolate-400">
         <Ticket className="w-5 h-5" />
         <span className="font-medium">Reservation</span>
@@ -123,11 +277,12 @@ function ReservationView({ args, result, isLoading }: { args: Record<string, unk
         <div><span className="text-chocolate-500">Flight:</span> {args.flightNumber as string}</div>
         {departure && <div><span className="text-chocolate-500">From:</span> {departure.cityName} ({departure.airportCode})</div>}
         {arrival && <div><span className="text-chocolate-500">To:</span> {arrival.cityName} ({arrival.airportCode})</div>}
-        {result && (result as { totalPriceInUSD?: number }).totalPriceInUSD && (
-          <div className="text-lg font-bold text-chocolate-700 dark:text-chocolate-300">Total: ${(result as { totalPriceInUSD: number }).totalPriceInUSD}</div>
+        {price && (
+          <div className="text-lg font-bold text-chocolate-700 dark:text-chocolate-300">Total: ${price}</div>
         )}
       </div>
-      {isLoading && <LoadingBar />}
+      {isLoading && <LoadingIndicator label="Confirming reservation..." />}
+      <JsonSnippet args={args} result={result} label="Reservation details" />
     </div>
   );
 }

@@ -1,4 +1,3 @@
-import { Spinner as ShadcnSpinner } from "@repo/shadcn-ui/components/ui/spinner";
 import {
   LoaderCircleIcon,
   LoaderIcon,
@@ -264,8 +263,6 @@ export const Spinner = ({ variant, ...props }: SpinnerProps) => {
     case "infinite":
       return <Infinite {...props} />;
     default:
-      return (
-        <ShadcnSpinner className={cn("size-6", props.className)} {...props} />
-      );
+      return <CircleFilled {...props} />;
   }
 };

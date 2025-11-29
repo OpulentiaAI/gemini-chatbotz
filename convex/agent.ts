@@ -26,7 +26,12 @@ type OpenRouterModelId =
   | "mistralai/mistral-large"
   | "deepseek/deepseek-chat"
   | "x-ai/grok-4.1-fast:free"
-  | "moonshotai/kimi-k2-thinking";
+  | "moonshotai/kimi-k2-thinking"
+  | "prime-intellect/intellect-3"
+  | "minimax/minimax-m2"
+  | "x-ai/grok-code-fast-1"
+  | "z-ai/glm-4.6"
+  | "qwen/qwen3-vl-235b-a22b-instruct";
 
 const baseInstructions = `
 <core_identity>
