@@ -3,10 +3,14 @@
 import { internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import { generateObject } from "ai";
-import { google } from "@ai-sdk/google";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { z } from "zod";
 
-const geminiFlash = google("gemini-2.5-flash-preview-05-20");
+const openrouter = createOpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
+
+const geminiFlash = openrouter("google/gemini-3-pro-preview");
 
 export const generateFlightStatus = internalAction({
   args: {

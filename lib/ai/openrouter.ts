@@ -270,7 +270,7 @@ export const OPENROUTER_MODELS: ModelDefinition[] = [
   },
 ];
 
-export const DEFAULT_MODEL: OpenRouterModelId = "google/gemini-3-pro-preview";
+export const DEFAULT_MODEL: OpenRouterModelId = "deepseek/deepseek-v3.2";
 export const DEFAULT_FAST_MODEL: OpenRouterModelId = "openai/gpt-4o-mini";
 export const DEFAULT_ARTIFACT_MODEL: OpenRouterModelId = "anthropic/claude-3.5-sonnet";
 

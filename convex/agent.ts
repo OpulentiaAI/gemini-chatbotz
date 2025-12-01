@@ -25,6 +25,8 @@ type OpenRouterModelId =
   | "meta-llama/llama-3.1-405b-instruct"
   | "mistralai/mistral-large"
   | "deepseek/deepseek-chat"
+  | "deepseek/deepseek-v3.2"
+  | "deepseek/deepseek-v3.2-speciale"
   | "x-ai/grok-4.1-fast:free"
   | "moonshotai/kimi-k2-thinking"
   | "prime-intellect/intellect-3"
