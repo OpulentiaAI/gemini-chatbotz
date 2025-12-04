@@ -214,14 +214,15 @@ export function Chat({
 
   // Helper to extract tool invocations from message parts
   // @convex-dev/agent uses type: "tool-<toolName>" format (e.g., "tool-createDocument")
-  const getToolInvocations = (parts: any[] | undefined) => {
+  const getToolInvocations = (parts: any[] | undefined, messageId?: string) => {
     if (!parts) return [];
     return parts
       .filter((p: any) => typeof p.type === "string" && p.type.startsWith("tool-"))
-      .map((p: any) => ({
+      .map((p: any, idx: number) => ({
         // Extract toolName from "tool-<toolName>"
         toolName: p.type.replace("tool-", ""),
-        toolCallId: p.toolCallId || p.id || Math.random().toString(),
+        // Create unique key: prefer toolCallId, fallback to message+index combo
+        toolCallId: p.toolCallId || `${messageId || "msg"}-tool-${idx}-${Date.now()}`,
         state: p.state, // "input-available", "output-available", "output-error"
         args: p.input, // @convex-dev/agent uses "input" not "args"
         result: p.output, // @convex-dev/agent uses "output" not "result"
@@ -249,7 +250,7 @@ export function Chat({
                 chatId={threadId || id}
                 role={message.role}
                 content={message.text || ""}
-                toolInvocations={getToolInvocations(message.parts)}
+                toolInvocations={getToolInvocations(message.parts, message.id)}
                 attachments={[]}
                 reasoning={getReasoningFromParts(message.parts)}
                 isStreaming={messageIsStreaming}
