@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Plane, CreditCard, MapPin, Ticket, Search, Cloud, FileCode, FileText, Image, Globe, CheckCircle, ShieldCheck, Sparkles, Code, Table, Monitor, ExternalLink, Maximize2, Play } from "lucide-react";
+import { Plane, CreditCard, MapPin, Ticket, Search, Cloud, FileCode, FileText, Image as ImageIcon, Globe, CheckCircle, ShieldCheck, Sparkles, Code, Table, Monitor, ExternalLink, Maximize2, Play, ImagePlus } from "lucide-react";
 import { Snippet, SnippetHeader, SnippetCopyButton, SnippetTabsList, SnippetTabsTrigger, SnippetTabsContent } from "@/components/kibo-ui/snippet";
 import { Spinner } from "@/components/kibo-ui/spinner";
 import { Status, StatusIndicator, StatusLabel } from "@/components/kibo-ui/status";
 import { TableProvider, TableHeader, TableHeaderGroup, TableHead, TableColumnHeader, TableBody, TableRow, TableCell, type ColumnDef } from "@/components/kibo-ui/table";
+import { Stories, StoriesContent, Story, StoryImage, StoryOverlay, StoryTitle } from "@/components/kibo-ui/stories";
 import { cn } from "@/lib/utils";
 import { ArtifactPreviewButton } from "./artifact-panel";
 
@@ -87,7 +88,12 @@ export function ToolView({ toolName, args, result, status }: ToolViewProps) {
     case "updateDocument":
       return <DocumentView args={args} result={result} isLoading={isLoading} />;
     case "generateImage":
+    case "renderImage":
+    case "createImage":
       return <ImageGenerationView args={args} result={result} isLoading={isLoading} />;
+    case "analyzeImage":
+    case "processImages":
+      return <MultimodalImageView args={args} result={result} isLoading={isLoading} />;
     case "webSearch":
       return <WebSearchView args={args} result={result} isLoading={isLoading} />;
     case "tavilyExtract":
@@ -416,20 +422,95 @@ function WeatherView({ args, result, isLoading }: { args: Record<string, unknown
 
 function ImageGenerationView({ args, result, isLoading }: { args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
   const style = (args.style as string) || "realistic";
+  const images = (result as any)?.images as Array<{ url: string; title?: string }> | undefined;
+  const imageUrl = (result as any)?.url || (result as any)?.imageUrl;
   
   return (
     <div className="rounded-xl border border-chocolate-200 dark:border-chocolate-700 bg-chocolate-50 dark:bg-chocolate-900 p-4 space-y-3">
       <div className="flex items-center gap-2 text-chocolate-600 dark:text-chocolate-400">
-        <Sparkles className="w-5 h-5" />
-        <span className="font-medium">Generating Image</span>
+        <ImagePlus className="w-5 h-5" />
+        <span className="font-medium">Generated Image</span>
       </div>
       <p className="text-sm text-chocolate-600 dark:text-chocolate-400">{args.prompt as string}</p>
       <p className="text-xs text-chocolate-400">Style: {style}</p>
       {isLoading && <LoadingBar />}
-      {result && (
-        <div className="text-xs text-chocolate-500">
-          Image generation requested
+      
+      {/* Single image display */}
+      {imageUrl && (
+        <div className="rounded-lg overflow-hidden border border-chocolate-200 dark:border-chocolate-700">
+          <img src={imageUrl} alt={args.prompt as string} className="w-full h-auto" />
         </div>
+      )}
+
+      {/* Multiple images as Stories carousel */}
+      {images && images.length > 0 && (
+        <Stories>
+          <StoriesContent>
+            {images.map((img, idx) => (
+              <Story className="aspect-[3/4] w-[200px]" key={idx}>
+                <StoryImage alt={img.title || `Generated ${idx + 1}`} src={img.url} />
+                <StoryOverlay side="bottom" />
+                <StoryTitle className="truncate font-medium text-sm">
+                  {img.title || `Image ${idx + 1}`}
+                </StoryTitle>
+              </Story>
+            ))}
+          </StoriesContent>
+        </Stories>
+      )}
+
+      {!imageUrl && !images && result && (
+        <div className="text-xs text-chocolate-500">
+          Image generation complete
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Multimodal Image Analysis View with Stories carousel
+function MultimodalImageView({ args, result, isLoading }: { args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
+  const analysis = (result as any)?.analysis || (result as any)?.description;
+  const images = (result as any)?.images as Array<{ url: string; caption?: string }> | undefined;
+  const storageId = args.storageId as string;
+  
+  return (
+    <div className="rounded-xl border border-chocolate-200 dark:border-chocolate-700 bg-chocolate-50 dark:bg-chocolate-900 p-4 space-y-3">
+      <div className="flex items-center gap-2 text-chocolate-600 dark:text-chocolate-400">
+        <ImageIcon className="w-5 h-5" />
+        <span className="font-medium">Image Analysis</span>
+      </div>
+
+      {isLoading && <LoadingIndicator label="Analyzing image..." />}
+
+      {/* Image carousel if multiple */}
+      {images && images.length > 0 && (
+        <Stories>
+          <StoriesContent>
+            {images.map((img, idx) => (
+              <Story className="aspect-[3/4] w-[200px]" key={idx}>
+                <StoryImage alt={img.caption || `Image ${idx + 1}`} src={img.url} />
+                <StoryOverlay side="bottom" />
+                {img.caption && (
+                  <StoryTitle className="truncate font-medium text-sm">
+                    {img.caption}
+                  </StoryTitle>
+                )}
+              </Story>
+            ))}
+          </StoriesContent>
+        </Stories>
+      )}
+
+      {/* Analysis result */}
+      {analysis && (
+        <div className="p-3 bg-chocolate-100 dark:bg-chocolate-800 rounded-lg">
+          <p className="text-sm text-chocolate-800 dark:text-chocolate-200 whitespace-pre-wrap">{analysis}</p>
+        </div>
+      )}
+
+      {storageId && !images && (
+        <p className="text-xs text-chocolate-500">Processing file: {storageId}</p>
       )}
     </div>
   );

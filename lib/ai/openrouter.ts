@@ -15,9 +15,11 @@ export type OpenRouterModelId =
   | "google/gemini-2.0-flash-exp"
   | "google/gemini-pro-1.5"
   | "google/gemini-3-pro-preview"
+  | "google/gemini-3-pro-image-preview"
   | "meta-llama/llama-3.1-70b-instruct"
   | "meta-llama/llama-3.1-405b-instruct"
   | "mistralai/mistral-large"
+  | "mistralai/mistral-large-2512"
   | "deepseek/deepseek-chat"
   | "deepseek/deepseek-v3.2"
   | "deepseek/deepseek-v3.2-speciale"
@@ -56,6 +58,26 @@ export const OPENROUTER_MODELS: ModelDefinition[] = [
     contextLength: 1000000,
     maxOutput: 65536,
     pricing: { prompt: 0.00125, completion: 0.005 },
+    capabilities: { vision: true, functionCalling: true, streaming: true },
+  },
+  {
+    id: "google/gemini-3-pro-image-preview",
+    name: "Gemini 3 Pro Image",
+    provider: "Google",
+    description: "Advanced image generation and editing with multimodal reasoning",
+    contextLength: 65536,
+    maxOutput: 8192,
+    pricing: { prompt: 0.002, completion: 0.012 },
+    capabilities: { vision: true, functionCalling: true, streaming: true },
+  },
+  {
+    id: "mistralai/mistral-large-2512",
+    name: "Mistral Large 2512",
+    provider: "Mistral",
+    description: "Sparse MoE with 41B active params (675B total), Apache 2.0",
+    contextLength: 262144,
+    maxOutput: 8192,
+    pricing: { prompt: 0.0005, completion: 0.0015 },
     capabilities: { vision: true, functionCalling: true, streaming: true },
   },
   {
