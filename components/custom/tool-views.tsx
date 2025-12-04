@@ -422,37 +422,56 @@ function WeatherView({ args, result, isLoading }: { args: Record<string, unknown
 }
 
 function ImageGenerationView({ args, result, isLoading }: { args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
-  const style = (args.style as string) || "realistic";
+  const style = (args.style as string) || (result as any)?.style || "realistic";
+  const aspectRatio = (args.aspectRatio as string) || (result as any)?.aspectRatio || "1:1";
+  
+  // Handle different response formats
   const images = (result as any)?.images as Array<{ url: string; title?: string }> | undefined;
+  const imageUrls = (result as any)?.imageUrls as string[] | undefined;
   const imageUrl = (result as any)?.url || (result as any)?.imageUrl;
+  
+  // Combine all image sources
+  const allImages: string[] = [];
+  if (imageUrl) allImages.push(imageUrl);
+  if (imageUrls) allImages.push(...imageUrls);
+  if (images) allImages.push(...images.map(img => img.url));
   
   return (
     <div className="rounded-xl border border-chocolate-200 dark:border-chocolate-700 bg-chocolate-50 dark:bg-chocolate-900 p-4 space-y-3">
       <div className="flex items-center gap-2 text-chocolate-600 dark:text-chocolate-400">
         <ImagePlus className="w-5 h-5" />
         <span className="font-medium">Generated Image</span>
+        {(result as any)?.imageCount > 0 && (
+          <span className="text-xs bg-chocolate-200 dark:bg-chocolate-700 px-2 py-0.5 rounded-full">
+            {(result as any).imageCount} image{(result as any).imageCount > 1 ? 's' : ''}
+          </span>
+        )}
       </div>
       <p className="text-sm text-chocolate-600 dark:text-chocolate-400">{args.prompt as string}</p>
-      <p className="text-xs text-chocolate-400">Style: {style}</p>
+      <div className="flex gap-2 text-xs text-chocolate-400">
+        <span>Style: {style}</span>
+        <span>•</span>
+        <span>Aspect: {aspectRatio}</span>
+      </div>
       {isLoading && <LoadingBar />}
       
-      {/* Single image display */}
-      {imageUrl && (
+      {/* Display images */}
+      {allImages.length === 1 && (
         <div className="rounded-lg overflow-hidden border border-chocolate-200 dark:border-chocolate-700">
-          <img src={imageUrl} alt={args.prompt as string} className="w-full h-auto" />
+          <img src={allImages[0]} alt={args.prompt as string} className="w-full h-auto" />
         </div>
       )}
 
       {/* Multiple images as Stories carousel */}
-      {images && images.length > 0 && (
+      {allImages.length > 1 && (
         <Stories>
           <StoriesContent>
-            {images.map((img, idx) => (
+            {allImages.map((url, idx) => (
               <Story className="aspect-[3/4] w-[200px]" key={idx}>
-                <StoryImage alt={img.title || `Generated ${idx + 1}`} src={img.url} />
+                <StoryImage alt={`Generated ${idx + 1}`} src={url} />
                 <StoryOverlay side="bottom" />
                 <StoryTitle className="truncate font-medium text-sm">
-                  {img.title || `Image ${idx + 1}`}
+                  Image {idx + 1}
                 </StoryTitle>
               </Story>
             ))}
@@ -460,9 +479,15 @@ function ImageGenerationView({ args, result, isLoading }: { args: Record<string,
         </Stories>
       )}
 
-      {!imageUrl && !images && result && (
+      {allImages.length === 0 && result && (result as any)?.status === "success" && (
         <div className="text-xs text-chocolate-500">
-          Image generation complete
+          Image generation complete (no images returned)
+        </div>
+      )}
+      
+      {(result as any)?.status === "error" && (
+        <div className="text-xs text-red-500">
+          Error: {(result as any)?.reason}
         </div>
       )}
     </div>
