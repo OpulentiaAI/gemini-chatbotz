@@ -67,7 +67,7 @@ export function Chat({
 
         try {
           // Get upload URL from Convex
-          const uploadUrl = await generateUploadUrl();
+          const { url: uploadUrl } = await generateUploadUrl();
 
           // Upload the file
           const response = await fetch(uploadUrl, {

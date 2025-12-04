@@ -34,11 +34,11 @@ const modelValidator = v.optional(v.union(
 ));
 
 // File attachment validator for PDF, images, etc.
-const fileAttachmentValidator = v.object({
-  storageId: v.string(),
-  fileName: v.string(),
-  mediaType: v.string(),
-});
+  const fileAttachmentValidator = v.object({
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    mediaType: v.string(),
+  });
 
 /**
  * Pre-analyze files BEFORE sending to the agent.
