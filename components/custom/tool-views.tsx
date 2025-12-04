@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useMemo } from "react";
-import { Plane, CreditCard, MapPin, Ticket, Search, Cloud, FileCode, FileText, Image, Globe, CheckCircle, ShieldCheck, Sparkles, Code, Table } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { Plane, CreditCard, MapPin, Ticket, Search, Cloud, FileCode, FileText, Image, Globe, CheckCircle, ShieldCheck, Sparkles, Code, Table, Monitor, ExternalLink, Maximize2, Play } from "lucide-react";
 import { Snippet, SnippetHeader, SnippetCopyButton, SnippetTabsList, SnippetTabsTrigger, SnippetTabsContent } from "@/components/kibo-ui/snippet";
 import { Spinner } from "@/components/kibo-ui/spinner";
 import { Status, StatusIndicator, StatusLabel } from "@/components/kibo-ui/status";
@@ -94,6 +94,14 @@ export function ToolView({ toolName, args, result, status }: ToolViewProps) {
     case "tavilyCrawl":
     case "tavilyMap":
       return <TavilyToolView toolName={toolName} args={args} result={result} isLoading={isLoading} />;
+    // Hyperbrowser Tools with Live Preview
+    case "hyperAgentTask":
+      return <HyperAgentView args={args} result={result} isLoading={isLoading} />;
+    case "hyperbrowserExtract":
+    case "hyperbrowserScrape":
+      return <HyperbrowserScrapeView toolName={toolName} args={args} result={result} isLoading={isLoading} />;
+    case "createBrowserSession":
+      return <BrowserSessionView args={args} result={result} isLoading={isLoading} />;
     default:
       return <GenericToolView toolName={toolName} args={args} result={result} isLoading={isLoading} />;
   }
@@ -539,7 +547,202 @@ function TavilyToolView({ toolName, args, result, isLoading }: { toolName: strin
   );
 }
 
+// =============================================================================
+// Hyperbrowser Tool Views with Live Preview
+// =============================================================================
+
+function LivePreviewEmbed({ liveUrl, title = "Browser Session" }: { liveUrl: string; title?: string }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-chocolate-500 font-medium flex items-center gap-1">
+          <Monitor className="w-3 h-3" />
+          Live Browser Preview
+        </p>
+        <div className="flex gap-1">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-1 hover:bg-chocolate-200 dark:hover:bg-chocolate-700 rounded text-chocolate-500"
+            title={isExpanded ? "Minimize" : "Expand"}
+          >
+            <Maximize2 className="w-4 h-4" />
+          </button>
+          <a
+            href={liveUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-1 hover:bg-chocolate-200 dark:hover:bg-chocolate-700 rounded text-chocolate-500"
+            title="Open in new tab"
+          >
+            <ExternalLink className="w-4 h-4" />
+          </a>
+        </div>
+      </div>
+      <div 
+        className={cn(
+          "rounded-lg border border-chocolate-200 dark:border-chocolate-700 overflow-hidden transition-all duration-300",
+          isExpanded ? "h-[500px]" : "h-[280px]"
+        )}
+      >
+        <iframe
+          src={liveUrl}
+          className="w-full h-full"
+          title={title}
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        />
+      </div>
+    </div>
+  );
+}
+
+function HyperAgentView({ args, result, isLoading }: { args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
+  const liveUrl = (result as any)?.liveUrl || (result as any)?.live_url;
+  const finalResult = (result as any)?.finalResult;
+  const steps = (result as any)?.steps as Array<{ action?: string; result?: string }> | undefined;
+  const status = (result as any)?.status;
+
+  return (
+    <div className="rounded-xl border border-chocolate-200 dark:border-chocolate-700 bg-chocolate-50 dark:bg-chocolate-900 p-4 space-y-4">
+      <div className="flex items-center gap-2 text-chocolate-600 dark:text-chocolate-400">
+        <Play className="w-5 h-5" />
+        <span className="font-medium">HyperAgent Browser Automation</span>
+        {status && (
+          <Status status={status === "completed" ? "online" : status === "failed" ? "offline" : "degraded"} className="text-xs px-2 py-0.5 ml-auto">
+            <StatusIndicator />
+            <StatusLabel>{status}</StatusLabel>
+          </Status>
+        )}
+      </div>
+
+      <div className="text-sm text-chocolate-700 dark:text-chocolate-300 bg-chocolate-100 dark:bg-chocolate-800 p-3 rounded-lg">
+        <span className="text-chocolate-500 text-xs uppercase block mb-1">Task</span>
+        {args.task as string}
+      </div>
+
+      {isLoading && (
+        <div className="space-y-2">
+          <LoadingIndicator label="Executing browser automation..." />
+          {liveUrl && <LivePreviewEmbed liveUrl={liveUrl} title="HyperAgent Session" />}
+        </div>
+      )}
+
+      {!isLoading && liveUrl && (
+        <LivePreviewEmbed liveUrl={liveUrl} title="HyperAgent Session" />
+      )}
+
+      {finalResult && (
+        <div className="p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg">
+          <p className="text-xs text-green-600 dark:text-green-400 font-medium mb-1 flex items-center gap-1">
+            <CheckCircle className="w-3 h-3" /> Result
+          </p>
+          <p className="text-sm text-green-800 dark:text-green-200">{finalResult}</p>
+        </div>
+      )}
+
+      {steps && steps.length > 0 && (
+        <Snippet className="bg-white/70 dark:bg-chocolate-950/60 border-chocolate-200 dark:border-chocolate-800" defaultValue="steps">
+          <SnippetHeader className="bg-chocolate-100 dark:bg-chocolate-800">
+            <div className="text-xs font-medium text-chocolate-600 dark:text-chocolate-200">Execution Steps ({steps.length})</div>
+          </SnippetHeader>
+          <SnippetTabsList>
+            <SnippetTabsTrigger value="steps">Steps</SnippetTabsTrigger>
+            <SnippetTabsTrigger value="raw">Raw</SnippetTabsTrigger>
+          </SnippetTabsList>
+          <SnippetTabsContent className="bg-chocolate-50 dark:bg-chocolate-900 max-h-48 overflow-auto" value="steps">
+            <div className="space-y-2">
+              {steps.map((step, i) => (
+                <div key={i} className="text-xs p-2 bg-chocolate-100 dark:bg-chocolate-800 rounded">
+                  <span className="text-chocolate-500">Step {i + 1}:</span> {step.action || JSON.stringify(step)}
+                </div>
+              ))}
+            </div>
+          </SnippetTabsContent>
+          <SnippetTabsContent className="bg-chocolate-50 dark:bg-chocolate-900" value="raw">
+            <pre className="text-xs whitespace-pre-wrap text-chocolate-700 dark:text-chocolate-200">{JSON.stringify(result, null, 2)}</pre>
+          </SnippetTabsContent>
+        </Snippet>
+      )}
+    </div>
+  );
+}
+
+function HyperbrowserScrapeView({ toolName, args, result, isLoading }: { toolName: string; args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
+  const liveUrl = (result as any)?.liveUrl;
+  const data = (result as any)?.data;
+  const status = (result as any)?.status;
+
+  return (
+    <div className="rounded-xl border border-chocolate-200 dark:border-chocolate-700 bg-chocolate-50 dark:bg-chocolate-900 p-4 space-y-3">
+      <div className="flex items-center gap-2 text-chocolate-600 dark:text-chocolate-400">
+        <Globe className="w-5 h-5" />
+        <span className="font-medium">
+          {toolName === "hyperbrowserExtract" ? "Content Extraction" : "Page Scraping"}
+        </span>
+        {status && (
+          <Status status={status === "completed" ? "online" : "degraded"} className="text-xs px-2 py-0.5 ml-auto">
+            <StatusIndicator />
+            <StatusLabel>{status}</StatusLabel>
+          </Status>
+        )}
+      </div>
+
+      <p className="text-sm text-chocolate-600 dark:text-chocolate-400">
+        {(args.url || (args.urls as string[])?.join(", ")) as string}
+      </p>
+
+      {isLoading && <LoadingBar />}
+
+      {liveUrl && <LivePreviewEmbed liveUrl={liveUrl} />}
+
+      {data && (
+        <div className="text-xs bg-chocolate-100 dark:bg-chocolate-800 p-3 rounded max-h-60 overflow-auto">
+          <pre className="whitespace-pre-wrap text-chocolate-700 dark:text-chocolate-200">
+            {typeof data === "string" ? data : JSON.stringify(data, null, 2)}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BrowserSessionView({ args, result, isLoading }: { args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
+  const liveUrl = (result as any)?.liveUrl;
+  const sessionId = (result as any)?.sessionId;
+  const status = (result as any)?.status;
+
+  return (
+    <div className="rounded-xl border border-chocolate-200 dark:border-chocolate-700 bg-chocolate-50 dark:bg-chocolate-900 p-4 space-y-3">
+      <div className="flex items-center gap-2 text-chocolate-600 dark:text-chocolate-400">
+        <Monitor className="w-5 h-5" />
+        <span className="font-medium">Browser Session</span>
+        {status && (
+          <Status status={status === "created" ? "online" : "degraded"} className="text-xs px-2 py-0.5 ml-auto">
+            <StatusIndicator />
+            <StatusLabel>{status}</StatusLabel>
+          </Status>
+        )}
+      </div>
+
+      {isLoading && <LoadingIndicator label="Creating browser session..." />}
+
+      {sessionId && (
+        <div className="text-xs">
+          <span className="text-chocolate-500">Session ID:</span>{" "}
+          <code className="bg-chocolate-100 dark:bg-chocolate-800 px-1 py-0.5 rounded">{sessionId}</code>
+        </div>
+      )}
+
+      {liveUrl && <LivePreviewEmbed liveUrl={liveUrl} title="Browser Session" />}
+    </div>
+  );
+}
+
 function GenericToolView({ toolName, args, result, isLoading }: { toolName: string; args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
+  // Check if result contains a liveUrl for any generic tool
+  const liveUrl = (result as any)?.liveUrl || (result as any)?.live_url;
+
   return (
     <div className="rounded-xl border border-chocolate-200 dark:border-chocolate-700 bg-chocolate-50 dark:bg-chocolate-900 p-4 space-y-3">
       <div className="flex items-center gap-2 text-chocolate-600 dark:text-chocolate-400">
@@ -547,7 +750,8 @@ function GenericToolView({ toolName, args, result, isLoading }: { toolName: stri
       </div>
       <pre className="text-xs bg-chocolate-100 dark:bg-chocolate-800 p-2 rounded overflow-auto">{JSON.stringify(args, null, 2)}</pre>
       {isLoading && <LoadingBar />}
-      {result && <pre className="text-xs bg-chocolate-200 dark:bg-chocolate-700 p-2 rounded overflow-auto">{JSON.stringify(result, null, 2)}</pre>}
+      {liveUrl && <LivePreviewEmbed liveUrl={liveUrl} />}
+      {result && <pre className="text-xs bg-chocolate-200 dark:bg-chocolate-700 p-2 rounded overflow-auto max-h-60">{JSON.stringify(result, null, 2)}</pre>}
     </div>
   );
 }

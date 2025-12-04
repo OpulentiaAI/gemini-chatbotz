@@ -187,6 +187,48 @@ Exa is optimized for AI applications with superior semantic understanding and lo
 - **generateImage**: Create AI-generated images from text prompts.
 </utility_tools>
 
+<hyperbrowser_tools>
+You have access to Hyperbrowser for advanced browser automation with LIVE PREVIEW:
+
+**When to use Hyperbrowser over simple fetch/search:**
+- JS-rendered pages (React, Vue, Angular SPAs)
+- Sites with bot protection or CAPTCHAs
+- Complex multi-step workflows (login, click, fill forms)
+- Pages that block simple HTTP requests
+
+**Tools Available:**
+
+1. **hyperAgentTask** - Multi-step browser automation
+   - Describe the task in natural language
+   - Agent clicks, types, navigates automatically
+   - Returns \`liveUrl\` for real-time streaming preview
+   - Use \`keepBrowserOpen: true\` for follow-up tasks on same session
+   - Increase \`maxSteps\` (20 default) for complex workflows
+   
+2. **hyperbrowserExtract** - Structured content extraction
+   - Pass array of URLs
+   - Optionally provide extraction prompt or JSON schema
+   - Great for scraping dynamic content
+
+3. **hyperbrowserScrape** - Simple JS-rendered scraping
+   - Faster than HyperAgent for straightforward pages
+   - Returns markdown content
+   - Use \`waitFor\` to allow dynamic content to load
+
+4. **createBrowserSession** - Manual session control
+   - Create persistent browser for multi-step workflows
+   - Returns \`sessionId\` to reuse across tasks
+   - Returns \`liveUrl\` for user to watch live
+
+**Live Preview**: When tools return a \`liveUrl\`, it can be embedded as an iframe to watch the browser session in real-time. This is useful for debugging or letting users observe automation.
+
+**Best Practices:**
+- Start with simpler tools (hyperbrowserScrape) before HyperAgent
+- For multi-step workflows, create a session first, then reuse sessionId
+- Increase maxSteps for complex tasks (50+ for multi-page flows)
+- Keep sessions open for related follow-up tasks
+</hyperbrowser_tools>
+
 <coding_guidelines>
 When writing code:
 - Avoid over-engineering—only make changes directly requested or clearly necessary.
@@ -623,6 +665,77 @@ Use this when you need structured, parseable output from a PDF.`,
         prompt,
         mediaType,
       });
+      return result;
+    },
+  }),
+  // ==========================================================================
+  // Hyperbrowser Tools (Browser Automation with Live Preview)
+  // ==========================================================================
+  hyperAgentTask: createTool({
+    description: `Execute a multi-step browser automation task using Hyperbrowser HyperAgent.
+Best for:
+- JS-rendered or protected websites that block simple fetch
+- Complex multi-step workflows (clicking, typing, navigation)
+- Sites with CAPTCHAs or bot protection
+- Scraping dynamic SPAs and React apps
+
+Returns: finalResult, step trace, and liveUrl for streaming preview.
+The liveUrl can be embedded to watch the browser session in real-time.`,
+    args: z.object({
+      task: z.string().describe("Natural language description of what to do in the browser"),
+      llm: z.string().optional().describe("LLM to use: 'gpt-4o', 'gpt-4o-mini', 'claude-3.5-sonnet' (default: gpt-4o)"),
+      maxSteps: z.number().optional().describe("Max browser actions to take (default: 20, increase for complex tasks)"),
+      sessionId: z.string().optional().describe("Reuse existing browser session for multi-step workflows"),
+      keepBrowserOpen: z.boolean().optional().describe("Keep browser open after task (for follow-up tasks)"),
+    }),
+    handler: async (ctx, args) => {
+      const result = await ctx.runAction(internal.hyperbrowser.hyperAgentTask, args);
+      return result;
+    },
+  }),
+  hyperbrowserExtract: createTool({
+    description: `Extract structured content from URLs using Hyperbrowser.
+Supports JS-rendered pages that simple fetch cannot handle.
+Use for:
+- Extracting data from dynamic websites
+- Scraping React/Vue/Angular apps
+- Getting content from sites requiring JavaScript`,
+    args: z.object({
+      urls: z.array(z.string()).describe("URLs to extract content from"),
+      prompt: z.string().optional().describe("What specific data to extract"),
+      schema: z.any().optional().describe("JSON schema for structured extraction"),
+      onlyMainContent: z.boolean().optional().describe("Extract only main content, skip nav/footer (default: true)"),
+    }),
+    handler: async (ctx, args) => {
+      const result = await ctx.runAction(internal.hyperbrowser.hyperbrowserExtract, args);
+      return result;
+    },
+  }),
+  hyperbrowserScrape: createTool({
+    description: `Simple page scraping with JS rendering support.
+Faster than HyperAgent for straightforward scraping tasks.
+Returns markdown content from the page.`,
+    args: z.object({
+      url: z.string().describe("URL to scrape"),
+      onlyMainContent: z.boolean().optional().describe("Extract only main content (default: true)"),
+      waitFor: z.number().optional().describe("Wait time in ms for dynamic content (default: 2000)"),
+    }),
+    handler: async (ctx, args) => {
+      const result = await ctx.runAction(internal.hyperbrowser.hyperbrowserScrape, args);
+      return result;
+    },
+  }),
+  createBrowserSession: createTool({
+    description: `Create a browser session for manual control or multi-step workflows.
+Returns sessionId and liveUrl for streaming preview.
+Use this when you need to:
+- Perform multiple HyperAgent tasks on the same browser
+- Keep browser state (cookies, login) across operations`,
+    args: z.object({
+      viewOnly: z.boolean().optional().describe("If true, live view is read-only (default: false)"),
+    }),
+    handler: async (ctx, args) => {
+      const result = await ctx.runAction(internal.hyperbrowser.createBrowserSession, args);
       return result;
     },
   }),

@@ -21,6 +21,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@exalabs/ai-sdk": "^1.0.4",
     "@floating-ui/dom": "^1.7.4",
+    "@hyperbrowser/sdk": "^0.78.0",
     "@openrouter/ai-sdk-provider": "1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.2",
     "@radix-ui/react-collapsible": "^1.1.12",
