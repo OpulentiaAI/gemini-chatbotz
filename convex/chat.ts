@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import { flightAgent, codeAgent, quickAgent, researchAgent, createAgentWithModel } from "./agent";
 import { Agent } from "@convex-dev/agent";
 import { internal, api } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 
 const modelValidator = v.optional(v.union(
   v.literal("openai/gpt-4o"),
@@ -31,6 +32,56 @@ const modelValidator = v.optional(v.union(
   v.literal("z-ai/glm-4.6"),
   v.literal("qwen/qwen3-vl-235b-a22b-instruct")
 ));
+
+// File attachment validator for PDF, images, etc.
+const fileAttachmentValidator = v.object({
+  storageId: v.string(),
+  fileName: v.string(),
+  mediaType: v.string(),
+});
+
+/**
+ * Pre-analyze files BEFORE sending to the agent.
+ * This avoids the thought_signature issue with Gemini 3 Pro tool calling.
+ */
+async function preAnalyzeFiles(
+  ctx: any,
+  files: Array<{ storageId: string; fileName: string; mediaType: string }>,
+  userPrompt: string
+): Promise<string> {
+  if (!files || files.length === 0) return "";
+
+  const analysisResults: string[] = [];
+
+  for (const file of files) {
+    try {
+      if (file.mediaType === "application/pdf") {
+        // Pre-analyze PDF using our action directly
+        const result = await ctx.runAction(internal.actions.analyzePDF, {
+          storageId: file.storageId as Id<"_storage">,
+          prompt: userPrompt || `Provide a comprehensive analysis of this document "${file.fileName}". Include: summary, key topics, main findings, and important details.`,
+          fileName: file.fileName,
+        });
+        analysisResults.push(`\n📄 **Document Analysis: ${file.fileName}**\n${result.text}`);
+      } else if (file.mediaType.startsWith("image/")) {
+        // Pre-analyze image
+        const result = await ctx.runAction(internal.actions.analyzeImage, {
+          storageId: file.storageId as Id<"_storage">,
+          prompt: userPrompt || `Describe this image in detail: "${file.fileName}"`,
+          mediaType: file.mediaType,
+        });
+        analysisResults.push(`\n🖼️ **Image Analysis: ${file.fileName}**\n${result.text}`);
+      }
+    } catch (error) {
+      console.error(`Failed to analyze ${file.fileName}:`, error);
+      analysisResults.push(`\n⚠️ **Could not analyze: ${file.fileName}** - ${(error as Error).message}`);
+    }
+  }
+
+  if (analysisResults.length === 0) return "";
+
+  return `\n\n---\n📎 **PRE-ANALYZED FILE CONTENT:**\n${analysisResults.join("\n\n")}\n\n---\nThe above content was extracted from the user's uploaded files. Use this information to answer their question.\n---\n`;
+}
 
 function selectAgent(modelId?: string): Agent {
   if (!modelId) return flightAgent;
@@ -64,12 +115,18 @@ export const sendMessage = action({
     prompt: v.string(),
     userId: v.optional(v.string()),
     modelId: modelValidator,
+    attachments: v.optional(v.array(fileAttachmentValidator)),
   },
-  handler: async (ctx, { threadId, prompt, userId, modelId }) => {
+  handler: async (ctx, { threadId, prompt, userId, modelId, attachments }) => {
     const agent: Agent = modelId ? createAgentWithModel(modelId) : flightAgent;
     const { thread } = await agent.continueThread(ctx, { threadId });
+    
+    // PRE-ANALYZE files before sending to agent (avoids tool calling issues with Gemini 3 Pro)
+    const fileAnalysis = attachments ? await preAnalyzeFiles(ctx, attachments, prompt) : "";
+    const fullPrompt = prompt + fileAnalysis;
+    
     const result = await thread.generateText(
-      { prompt }
+      { prompt: fullPrompt }
     );
     if (userId) {
       await ctx.runMutation((api as any).chatDb.updateThreadTitle, {
@@ -81,6 +138,7 @@ export const sendMessage = action({
       text: result.text,
       toolCalls: result.toolCalls,
       toolResults: result.toolResults,
+      attachments: attachments || [],
     };
   },
 });
@@ -91,12 +149,18 @@ export const streamMessage = action({
     prompt: v.string(),
     userId: v.optional(v.string()),
     modelId: modelValidator,
+    attachments: v.optional(v.array(fileAttachmentValidator)),
   },
-  handler: async (ctx, { threadId, prompt, userId, modelId }) => {
+  handler: async (ctx, { threadId, prompt, userId, modelId, attachments }) => {
     const agent: Agent = modelId ? createAgentWithModel(modelId) : flightAgent;
     const { thread } = await agent.continueThread(ctx, { threadId });
+    
+    // PRE-ANALYZE files before sending to agent (avoids tool calling issues with Gemini 3 Pro)
+    const fileAnalysis = attachments ? await preAnalyzeFiles(ctx, attachments, prompt) : "";
+    const fullPrompt = prompt + fileAnalysis;
+    
     const result = await thread.streamText(
-      { prompt },
+      { prompt: fullPrompt },
       { saveStreamDeltas: { throttleMs: 100 } }
     );
     if (userId) {
@@ -107,6 +171,7 @@ export const streamMessage = action({
     }
     return {
       text: await result.text,
+      attachments: attachments || [],
     };
   },
 });

@@ -1,11 +1,25 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Settings, Mic, PlusCircle, Sparkles, CornerDownLeft, StopCircle, ChevronDown, Check, Zap, Brain, Gauge } from "lucide-react";
+import { Settings, Mic, PlusCircle, Sparkles, CornerDownLeft, StopCircle, ChevronDown, Check, Zap, Brain, Gauge, FileText, Image, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { OPENROUTER_MODELS, type OpenRouterModelId, type ModelDefinition } from "@/lib/ai/openrouter";
+
+// Supported file types for AI analysis
+const SUPPORTED_FILE_TYPES = {
+  "application/pdf": { icon: FileText, label: "PDF", color: "text-red-500" },
+  "image/png": { icon: Image, label: "PNG", color: "text-blue-500" },
+  "image/jpeg": { icon: Image, label: "JPEG", color: "text-green-500" },
+  "image/gif": { icon: Image, label: "GIF", color: "text-purple-500" },
+  "image/webp": { icon: Image, label: "WebP", color: "text-orange-500" },
+};
+
+function getFileIcon(mimeType: string) {
+  const config = SUPPORTED_FILE_TYPES[mimeType as keyof typeof SUPPORTED_FILE_TYPES];
+  return config || { icon: FileText, label: "File", color: "text-chocolate-400" };
+}
 
 type PromptInputProps = {
   onSubmit: (value: string, attachments?: File[], modelId?: OpenRouterModelId) => void;
@@ -164,22 +178,40 @@ export const PromptInput = ({
         }}
       >
         {attachments.length > 0 && (
-          <div className="flex flex-wrap gap-2 pb-2 border-b border-chocolate-100 dark:border-chocolate-800">
-            {attachments.map((file, index) => (
-              <div
-                key={index}
-                className="flex items-center gap-2 px-2 py-1 bg-chocolate-100 dark:bg-chocolate-800 rounded-lg text-xs"
-              >
-                <span className="truncate max-w-[150px]">{file.name}</span>
-                <button
-                  type="button"
-                  onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== index))}
-                  className="text-chocolate-400 hover:text-chocolate-600 dark:hover:text-chocolate-300"
+          <div className="flex flex-wrap gap-2 pb-3 border-b border-chocolate-100 dark:border-chocolate-800">
+            {attachments.map((file, index) => {
+              const { icon: FileIcon, label, color } = getFileIcon(file.type);
+              const isSupported = Object.keys(SUPPORTED_FILE_TYPES).includes(file.type);
+              return (
+                <div
+                  key={index}
+                  className={`group flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all ${
+                    isSupported 
+                      ? "bg-chocolate-100 dark:bg-chocolate-800 border border-chocolate-200 dark:border-chocolate-700" 
+                      : "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
+                  }`}
                 >
-                  ×
-                </button>
-              </div>
-            ))}
+                  <FileIcon className={`w-4 h-4 ${color} flex-shrink-0`} />
+                  <div className="flex flex-col min-w-0">
+                    <span className="truncate max-w-[120px] font-medium text-chocolate-900 dark:text-chocolate-100">
+                      {file.name}
+                    </span>
+                    <span className={`text-[10px] ${isSupported ? "text-chocolate-500" : "text-red-500"}`}>
+                      {isSupported ? `${label} • Ready for AI analysis` : "Unsupported format"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== index))}
+                    className="ml-1 p-0.5 rounded text-chocolate-400 hover:text-chocolate-600 dark:hover:text-chocolate-300 hover:bg-chocolate-200 dark:hover:bg-chocolate-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label={`Remove ${file.name}`}
+                    title="Remove file"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
         <div className="flex-1 min-h-[20px]">
@@ -287,13 +319,14 @@ export const PromptInput = ({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="flex items-center justify-center w-8 h-8 rounded-full text-chocolate-600 dark:text-chocolate-400 hover:bg-chocolate-100 dark:hover:bg-chocolate-800 transition-colors"
-                title="Add files"
+                title="Upload PDF or image for AI analysis"
                 disabled={isLoading}
               >
-                <PlusCircle className="w-[18px] h-[18px]" />
+                <Upload className="w-[18px] h-[18px]" />
               </button>
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs text-chocolate-50 bg-chocolate-900 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                Add files
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1.5 text-xs text-chocolate-50 bg-chocolate-900 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">
+                <div className="font-medium">Upload files</div>
+                <div className="text-chocolate-300 text-[10px]">PDF, PNG, JPEG, GIF, WebP</div>
               </div>
             </div>
             <div className="h-4 w-px bg-chocolate-200 dark:bg-chocolate-700 mx-1 hidden sm:block" />
@@ -349,6 +382,7 @@ export const PromptInput = ({
         multiple
         onChange={handleFileChange}
         tabIndex={-1}
+        accept=".pdf,application/pdf,image/png,image/jpeg,image/gif,image/webp"
       />
     </div>
   );

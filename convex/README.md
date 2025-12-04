@@ -1,4 +1,40 @@
-# Welcome to your Convex functions directory!
+# Convex Functions
+
+## Environment Variables
+
+Set these environment variables in your Convex dashboard (or `.env.local` for local dev):
+
+```bash
+# OpenRouter API key for multi-model support
+OPENROUTER_API_KEY=your_openrouter_api_key
+
+# Google Generative AI API key for PDF/file analysis (Gemini File API)
+GOOGLE_GENERATIVE_AI_API_KEY=your_google_ai_api_key
+
+# Exa API key for web search
+EXA_API_KEY=your_exa_api_key
+```
+
+## PDF & File Analysis
+
+The app uses the native `@ai-sdk/google` provider for file analysis with Gemini's File API. This supports:
+
+- **PDF Analysis**: Direct PDF processing without text extraction
+- **Image Analysis**: Vision capabilities for images
+- **Structured Extraction**: Extract summaries, key points, entities, tables
+
+### Agent Tools
+
+- `analyzePDF` - Analyze a PDF with natural language prompts
+- `analyzePDFStructured` - Extract structured data (summary, keyPoints, entities, tables)
+- `analyzeMultipleFiles` - Compare/analyze multiple files together
+- `analyzeImage` - Analyze images with vision capabilities
+
+### Usage
+
+Upload files through the chat interface, then ask questions about them. The agent will automatically use the appropriate analysis tools.
+
+---
 
 Write your Convex functions here.
 See https://docs.convex.dev/functions for more.

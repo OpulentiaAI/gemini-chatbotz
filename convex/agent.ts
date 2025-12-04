@@ -115,6 +115,48 @@ Use **updateDocument** to modify existing artifacts by ID.
 Artifact types: "text" | "code" | "sheet"
 </document_creation>
 
+<pdf_and_file_analysis>
+You have powerful PDF and file analysis capabilities using Gemini's native file handling:
+
+**When files are attached to a message**, they will appear with storage IDs. IMMEDIATELY analyze them using the appropriate tool:
+
+1. **For PDFs** - Use \`analyzePDF\`:
+   - Pass the \`storageId\` from the attached file
+   - Provide a detailed \`prompt\` describing what to analyze or extract
+   - Example: "Summarize the main findings and conclusions from this research paper"
+
+2. **For Structured PDF Extraction** - Use \`analyzePDFStructured\`:
+   - \`extractionType\`: "summary" | "keyPoints" | "entities" | "tables"
+   - "summary": Get title, summary, main topics
+   - "keyPoints": Extract key points with importance levels  
+   - "entities": Extract people, organizations, locations, dates
+   - "tables": Extract tabular data from the document
+
+3. **For Images** - Use \`analyzeImage\`:
+   - Supports PNG, JPEG, GIF, WebP
+   - Great for charts, diagrams, screenshots, photos
+   - Can extract text (OCR), describe contents, answer questions
+
+4. **For Multiple Files** - Use \`analyzeMultipleFiles\`:
+   - Compare documents side-by-side
+   - Cross-reference information across files
+   - Synthesize insights from multiple sources
+
+**IMPORTANT**: When a user uploads a file:
+- ALWAYS call the appropriate analysis tool immediately
+- Don't ask "what would you like me to do with this?" - analyze it proactively
+- If the user's question is vague, provide a comprehensive summary first
+- You can make multiple tool calls to extract different types of information
+- After analysis, offer to dig deeper into specific sections or answer follow-up questions
+
+**File Context Format**: Attached files appear in the prompt as:
+\`\`\`
+📎 **Attached Files:**
+  1. "filename.pdf" (application/pdf) - Storage ID: abc123
+\`\`\`
+Use the Storage ID in your tool calls.
+</pdf_and_file_analysis>
+
 <web_research>
 You have powerful web research capabilities via Exa - the search engine built for AI:
 
@@ -489,6 +531,101 @@ const baseTools = {
   exaGetContents,
   exaFindSimilar,
   exaAnswer,
+  // ==========================================================================
+  // PDF & File Analysis Tools (using Gemini File API via native Google AI SDK)
+  // ==========================================================================
+  analyzePDF: createTool({
+    description: `Analyze a PDF document using Gemini's native file handling capabilities.
+Use this when the user has uploaded a PDF file and wants to:
+- Understand its contents
+- Ask questions about the document
+- Extract specific information
+- Get a summary or analysis
+
+Requires a storage ID from an uploaded file.`,
+    args: z.object({
+      storageId: z.string().describe("Convex storage ID of the uploaded PDF file"),
+      prompt: z.string().describe("What to analyze or extract from the PDF. Be specific about what information you need."),
+      fileName: z.string().optional().describe("Original filename for better type detection"),
+    }),
+    handler: async (ctx, { storageId, prompt, fileName }) => {
+      const result = await ctx.runAction(internal.actions.analyzePDF, {
+        storageId: storageId as any,
+        prompt,
+        fileName,
+      });
+      return result;
+    },
+  }),
+  analyzePDFStructured: createTool({
+    description: `Extract structured data from a PDF document with specific extraction types:
+- "summary": Get title, summary, main topics
+- "keyPoints": Extract key points with importance levels
+- "entities": Extract people, organizations, locations, dates
+- "tables": Extract tabular data from the document
+
+Use this when you need structured, parseable output from a PDF.`,
+    args: z.object({
+      storageId: z.string().describe("Convex storage ID of the uploaded PDF file"),
+      prompt: z.string().describe("Additional context or instructions for extraction"),
+      extractionType: z.enum(["summary", "keyPoints", "entities", "tables"]).describe("Type of structured extraction to perform"),
+    }),
+    handler: async (ctx, { storageId, prompt, extractionType }) => {
+      const result = await ctx.runAction(internal.actions.analyzePDFStructured, {
+        storageId: storageId as any,
+        prompt,
+        extractionType,
+      });
+      return result;
+    },
+  }),
+  analyzeMultipleFiles: createTool({
+    description: `Analyze multiple files (PDFs or images) together. Use when:
+- Comparing multiple documents
+- Cross-referencing information across files
+- Analyzing a collection of related documents`,
+    args: z.object({
+      files: z.array(
+        z.object({
+          storageId: z.string().describe("Convex storage ID"),
+          fileName: z.string().describe("Original filename"),
+          mediaType: z.string().describe("MIME type (e.g., 'application/pdf', 'image/png')"),
+        })
+      ).describe("Array of files to analyze together"),
+      prompt: z.string().describe("What to analyze or compare across the files"),
+    }),
+    handler: async (ctx, { files, prompt }) => {
+      const result = await ctx.runAction(internal.actions.analyzeMultipleFiles, {
+        files: files.map(f => ({
+          storageId: f.storageId as any,
+          fileName: f.fileName,
+          mediaType: f.mediaType,
+        })),
+        prompt,
+      });
+      return result;
+    },
+  }),
+  analyzeImage: createTool({
+    description: `Analyze an image using Gemini's vision capabilities. Use for:
+- Describing image contents
+- Extracting text from images (OCR)
+- Answering questions about images
+- Analyzing charts, diagrams, or screenshots`,
+    args: z.object({
+      storageId: z.string().describe("Convex storage ID of the uploaded image"),
+      prompt: z.string().describe("What to analyze or extract from the image"),
+      mediaType: z.string().optional().describe("MIME type (e.g., 'image/png', 'image/jpeg')"),
+    }),
+    handler: async (ctx, { storageId, prompt, mediaType }) => {
+      const result = await ctx.runAction(internal.actions.analyzeImage, {
+        storageId: storageId as any,
+        prompt,
+        mediaType,
+      });
+      return result;
+    },
+  }),
 };
 
 export function createAgentWithModel(modelId: OpenRouterModelId) {

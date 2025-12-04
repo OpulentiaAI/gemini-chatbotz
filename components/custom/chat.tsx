@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useMemo } from "react";
-import { useAction } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useUIMessages } from "@convex-dev/agent/react";
 import { Message as PreviewMessage } from "@/components/custom/message";
@@ -10,6 +10,23 @@ import { PromptInput } from "./prompt-input";
 import { Overview } from "./overview";
 import { DEFAULT_MODEL, type OpenRouterModelId } from "@/lib/ai/openrouter";
 import { ThinkingMessage } from "@/components/ai-elements/thinking-message";
+import { toast } from "sonner";
+
+// File attachment type for uploaded files
+type FileAttachment = {
+  storageId: string;
+  fileName: string;
+  mediaType: string;
+};
+
+// Supported file types for PDF/image analysis
+const SUPPORTED_ANALYSIS_TYPES = [
+  "application/pdf",
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+];
 
 export function Chat({
   id,
@@ -23,12 +40,72 @@ export function Chat({
   // Thread ID is null until created by @convex-dev/agent (not the same as the page id)
   const [threadId, setThreadId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [selectedModel, setSelectedModel] = useState<OpenRouterModelId>(DEFAULT_MODEL);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const createThread = useAction(api.chat.createNewThread);
   // Use streamMessage for realtime streaming with Convex
   const streamMessage = useAction(api.chat.streamMessage);
+  // File upload mutations
+  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
+  const saveFile = useMutation(api.files.saveFile);
+
+  /**
+   * Upload files to Convex storage and return metadata for the agent.
+   */
+  const uploadFiles = useCallback(
+    async (files: File[]): Promise<FileAttachment[]> => {
+      const uploaded: FileAttachment[] = [];
+
+      for (const file of files) {
+        // Check if file type is supported
+        if (!SUPPORTED_ANALYSIS_TYPES.includes(file.type)) {
+          toast.warning(`Unsupported file type: ${file.name}. Supported: PDF, PNG, JPEG, GIF, WebP`);
+          continue;
+        }
+
+        try {
+          // Get upload URL from Convex
+          const uploadUrl = await generateUploadUrl();
+
+          // Upload the file
+          const response = await fetch(uploadUrl, {
+            method: "POST",
+            headers: { "Content-Type": file.type },
+            body: file,
+          });
+
+          if (!response.ok) {
+            throw new Error(`Upload failed: ${response.statusText}`);
+          }
+
+          const { storageId } = await response.json();
+
+          // Save file metadata
+          await saveFile({
+            storageId,
+            name: file.name,
+            contentType: file.type,
+          });
+
+          uploaded.push({
+            storageId,
+            fileName: file.name,
+            mediaType: file.type,
+          });
+
+          toast.success(`Uploaded: ${file.name}`);
+        } catch (error) {
+          console.error(`Failed to upload ${file.name}:`, error);
+          toast.error(`Failed to upload ${file.name}`);
+        }
+      }
+
+      return uploaded;
+    },
+    [generateUploadUrl, saveFile]
+  );
 
   const { results: messages, status } = useUIMessages(
     api.chatDb.listMessages,
@@ -49,7 +126,7 @@ export function Chat({
 
   const handleSubmit = useCallback(
     async (value: string, attachments?: File[], modelId?: OpenRouterModelId) => {
-      if (!value.trim()) return;
+      if (!value.trim() && (!attachments || attachments.length === 0)) return;
 
       setIsLoading(true);
       abortControllerRef.current = new AbortController();
@@ -65,23 +142,52 @@ export function Chat({
           }
         }
 
+        // Upload files if present
+        let uploadedAttachments: FileAttachment[] = [];
+        if (attachments && attachments.length > 0) {
+          setIsUploading(true);
+          toast.info(`Uploading ${attachments.length} file(s)...`);
+          uploadedAttachments = await uploadFiles(attachments);
+          setIsUploading(false);
+
+          if (uploadedAttachments.length === 0) {
+            toast.error("No files were uploaded successfully");
+            setIsLoading(false);
+            return;
+          }
+        }
+
+        // Build prompt with file context hint if files were uploaded
+        let prompt = value.trim();
+        if (uploadedAttachments.length > 0 && !prompt) {
+          // Default prompt if user just uploaded files without text
+          const fileTypes = uploadedAttachments.map(f => 
+            f.mediaType === "application/pdf" ? "PDF" : "image"
+          );
+          const uniqueTypes = [...new Set(fileTypes)];
+          prompt = `Please analyze the uploaded ${uniqueTypes.join(" and ")} file(s) and summarize the key information.`;
+        }
+
         // Use streamMessage for realtime streaming - writes deltas to DB every 100ms
         await streamMessage({
           threadId: currentThreadId,
-          prompt: value,
+          prompt,
           userId,
           modelId: modelId || selectedModel,
+          attachments: uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
         });
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
           console.error("Failed to send message:", error);
+          toast.error("Failed to send message");
         }
       } finally {
         setIsLoading(false);
+        setIsUploading(false);
         abortControllerRef.current = null;
       }
     },
-    [threadId, createThread, streamMessage, userId, selectedModel]
+    [threadId, createThread, streamMessage, userId, selectedModel, uploadFiles]
   );
 
   const handleStop = useCallback(() => {
@@ -163,8 +269,8 @@ export function Chat({
           <PromptInput
             onSubmit={handleSubmit}
             onStop={handleStop}
-            isLoading={isLoading || isStreamingResponse}
-            placeholder="Ask about flights, weather, code, or anything..."
+            isLoading={isLoading || isStreamingResponse || isUploading}
+            placeholder={isUploading ? "Uploading files..." : "Ask about flights, weather, code, or upload a PDF..."}
             selectedModel={selectedModel}
             onModelChange={handleModelChange}
           />
