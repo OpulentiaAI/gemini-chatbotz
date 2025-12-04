@@ -14,6 +14,7 @@ import type * as chat from "../chat.js";
 import type * as chatDb from "../chatDb.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
+import type * as hyperbrowser from "../hyperbrowser.js";
 import type * as reservations from "../reservations.js";
 
 import type {
@@ -29,6 +30,7 @@ declare const fullApi: ApiFromModules<{
   chatDb: typeof chatDb;
   files: typeof files;
   http: typeof http;
+  hyperbrowser: typeof hyperbrowser;
   reservations: typeof reservations;
 }>;
 
