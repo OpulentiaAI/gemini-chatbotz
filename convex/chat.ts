@@ -120,7 +120,12 @@ export const sendMessage = action({
     attachments: v.optional(v.array(fileAttachmentValidator)),
   },
   handler: async (ctx, { threadId, prompt, userId, modelId, attachments }) => {
-    const agent: Agent = modelId ? createAgentWithModel(modelId) : flightAgent;
+    // Image generation models don't support text generation - fallback to regular model
+    const effectiveModelId = modelId === "google/gemini-3-pro-image-preview" 
+      ? "google/gemini-3-pro-preview" 
+      : modelId;
+    
+    const agent: Agent = effectiveModelId ? createAgentWithModel(effectiveModelId) : flightAgent;
     const { thread } = await agent.continueThread(ctx, { threadId });
     
     // PRE-ANALYZE files before sending to agent (avoids tool calling issues with Gemini 3 Pro)
@@ -154,7 +159,12 @@ export const streamMessage = action({
     attachments: v.optional(v.array(fileAttachmentValidator)),
   },
   handler: async (ctx, { threadId, prompt, userId, modelId, attachments }) => {
-    const agent: Agent = modelId ? createAgentWithModel(modelId) : flightAgent;
+    // Image generation models don't support text streaming - fallback to regular model
+    const effectiveModelId = modelId === "google/gemini-3-pro-image-preview" 
+      ? "google/gemini-3-pro-preview" 
+      : modelId;
+    
+    const agent: Agent = effectiveModelId ? createAgentWithModel(effectiveModelId) : flightAgent;
     const { thread } = await agent.continueThread(ctx, { threadId });
     
     // PRE-ANALYZE files before sending to agent (avoids tool calling issues with Gemini 3 Pro)
