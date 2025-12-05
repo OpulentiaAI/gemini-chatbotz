@@ -13,6 +13,7 @@ import { ThinkingMessage } from "@/components/ai-elements/thinking-message";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
 import { upload } from "@vercel/blob/client";
+import { authClient } from "@/lib/auth-client";
 
 // File attachment type for uploaded files
 type FileAttachment = {
@@ -49,6 +50,12 @@ export function Chat({
   initialMessages?: Array<any>;
   userId?: string;
 }) {
+  const { data: session } = authClient.useSession();
+  const effectiveUserId = useMemo(
+    () => session?.user?.id ?? userId ?? "guest-user-00000000-0000-0000-0000-000000000000",
+    [session?.user?.id, userId]
+  );
+
   // Thread ID is null until created by @convex-dev/agent (not the same as the page id)
   const [threadId, setThreadId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -149,7 +156,7 @@ export function Chat({
       try {
         let currentThreadId = threadId;
         if (!currentThreadId) {
-          const result = await createThread({ userId });
+          const result = await createThread({ userId: effectiveUserId });
           currentThreadId = result.threadId;
           setThreadId(currentThreadId);
           if (typeof window !== "undefined") {
@@ -187,7 +194,7 @@ export function Chat({
         await streamMessage({
           threadId: currentThreadId,
           prompt,
-          userId,
+          userId: effectiveUserId,
           modelId: modelId || selectedModel,
           attachments: uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
         });
