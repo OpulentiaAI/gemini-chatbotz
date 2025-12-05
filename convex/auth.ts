@@ -10,6 +10,15 @@ const siteUrl =
   process.env.SITE_URL ||
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
+const convexSiteUrl =
+  process.env.NEXT_PUBLIC_CONVEX_SITE_URL || process.env.CONVEX_SITE_URL;
+
+if (!convexSiteUrl) {
+  throw new Error(
+    "Missing Convex site URL. Set NEXT_PUBLIC_CONVEX_SITE_URL or CONVEX_SITE_URL to your Convex deployment (e.g. https://brilliant-ferret-250.convex.cloud)."
+  );
+}
+
 // The component client exposes helper methods for Convex + Better Auth
 export const authComponent = createClient<DataModel>(components.betterAuth);
 
