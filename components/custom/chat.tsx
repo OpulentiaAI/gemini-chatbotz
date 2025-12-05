@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useMemo } from "react";
-import { useAction, useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useUIMessages } from "@convex-dev/agent/react";
 import { Message as PreviewMessage } from "@/components/custom/message";
@@ -11,10 +11,13 @@ import { Overview } from "./overview";
 import { DEFAULT_MODEL, type OpenRouterModelId } from "@/lib/ai/openrouter";
 import { ThinkingMessage } from "@/components/ai-elements/thinking-message";
 import { toast } from "sonner";
+import { upload } from "@vercel/blob/client";
+import type { Id } from "@/convex/_generated/dataModel";
 
 // File attachment type for uploaded files
 type FileAttachment = {
-  storageId: string;
+  storageId?: Id<"_storage">;
+  url?: string;
   fileName: string;
   mediaType: string;
 };
@@ -27,6 +30,15 @@ const SUPPORTED_ANALYSIS_TYPES = [
   "image/gif",
   "image/webp",
 ];
+
+const MAX_FILE_SIZE_BYTES = 32 * 1024 * 1024; // 32MB Convex storage limit
+
+const formatBytes = (size: number) => {
+  if (!Number.isFinite(size)) return "unknown size";
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+};
 
 export function Chat({
   id,
@@ -47,12 +59,8 @@ export function Chat({
   const createThread = useAction(api.chat.createNewThread);
   // Use streamMessage for realtime streaming with Convex
   const streamMessage = useAction(api.chat.streamMessage);
-  // File upload mutations
-  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
-  const saveFile = useMutation(api.files.saveFile);
-
   /**
-   * Upload files to Convex storage and return metadata for the agent.
+   * Upload files to Vercel Blob and return metadata for the agent.
    */
   const uploadFiles = useCallback(
     async (files: File[]): Promise<FileAttachment[]> => {
@@ -65,37 +73,29 @@ export function Chat({
           continue;
         }
 
+        // Check size before attempting upload (Convex storage ~32MB limit)
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+          toast.error(
+            `File too large: ${file.name} (${formatBytes(file.size)}). Max size is ${formatBytes(MAX_FILE_SIZE_BYTES)}.`
+          );
+          continue;
+        }
+
         try {
-          // Get upload URL from Convex
-          const { url: uploadUrl } = await generateUploadUrl();
-
-          // Upload the file
-          const response = await fetch(uploadUrl, {
-            method: "POST",
-            headers: { "Content-Type": file.type },
-            body: file,
-          });
-
-          if (!response.ok) {
-            throw new Error(`Upload failed: ${response.statusText}`);
-          }
-
-          const { storageId } = await response.json();
-
-          // Save file metadata
-          await saveFile({
-            storageId,
-            name: file.name,
-            contentType: file.type,
+          // Upload to Vercel Blob (signed via API route)
+          const blob = await upload(file.name, file, {
+            access: "public",
+            handleUploadUrl: "/api/files/upload",
+            multipart: true,
           });
 
           uploaded.push({
-            storageId,
+            url: blob.url,
             fileName: file.name,
             mediaType: file.type,
           });
 
-          toast.success(`Uploaded: ${file.name}`);
+          toast.success(`Uploaded: ${file.name} (${formatBytes(file.size)})`);
         } catch (error) {
           console.error(`Failed to upload ${file.name}:`, error);
           toast.error(`Failed to upload ${file.name}`);
@@ -104,7 +104,7 @@ export function Chat({
 
       return uploaded;
     },
-    [generateUploadUrl, saveFile]
+    []
   );
 
   const { results: messages, status } = useUIMessages(

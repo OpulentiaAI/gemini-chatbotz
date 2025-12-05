@@ -35,11 +35,12 @@ const modelValidator = v.optional(v.union(
 ));
 
 // File attachment validator for PDF, images, etc.
-  const fileAttachmentValidator = v.object({
-    storageId: v.id("_storage"),
-    fileName: v.string(),
-    mediaType: v.string(),
-  });
+const fileAttachmentValidator = v.object({
+  storageId: v.optional(v.id("_storage")),
+  url: v.optional(v.string()),
+  fileName: v.string(),
+  mediaType: v.string(),
+});
 
 /**
  * Pre-analyze files BEFORE sending to the agent.
@@ -47,7 +48,7 @@ const modelValidator = v.optional(v.union(
  */
 async function preAnalyzeFiles(
   ctx: any,
-  files: Array<{ storageId: string; fileName: string; mediaType: string }>,
+  files: Array<{ storageId?: string; url?: string; fileName: string; mediaType: string }>,
   userPrompt: string
 ): Promise<string> {
   if (!files || files.length === 0) return "";
@@ -60,6 +61,7 @@ async function preAnalyzeFiles(
         // Pre-analyze PDF using our action directly
         const result = await ctx.runAction(internal.actions.analyzePDF, {
           storageId: file.storageId as Id<"_storage">,
+          fileUrl: file.url,
           prompt: userPrompt || `Provide a comprehensive analysis of this document "${file.fileName}". Include: summary, key topics, main findings, and important details.`,
           fileName: file.fileName,
         });
@@ -68,6 +70,7 @@ async function preAnalyzeFiles(
         // Pre-analyze image
         const result = await ctx.runAction(internal.actions.analyzeImage, {
           storageId: file.storageId as Id<"_storage">,
+          fileUrl: file.url,
           prompt: userPrompt || `Describe this image in detail: "${file.fileName}"`,
           mediaType: file.mediaType,
         });

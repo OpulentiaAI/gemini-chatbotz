@@ -60,6 +60,8 @@ export const saveFile = mutation({
   },
 });
 
+// Note: direct ingestion from external blob is intentionally handled on the client side.
+
 export const getFileUrl = query({
   args: { storageId: v.id("_storage") },
   handler: async (ctx, { storageId }) => {

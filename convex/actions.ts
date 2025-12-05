@@ -152,27 +152,36 @@ export const generateReservationPrice = internalAction({
  */
 export const analyzePDF = internalAction({
   args: {
-    storageId: v.id("_storage"),
+    storageId: v.optional(v.id("_storage")),
+    fileUrl: v.optional(v.string()),
     prompt: v.string(),
     fileName: v.optional(v.string()),
   },
-  handler: async (ctx, { storageId, prompt, fileName }) => {
-    // Fetch the file from Convex storage
-    const fileBlob = await ctx.storage.get(storageId);
-    if (!fileBlob) {
-      throw new Error("File not found in storage");
+  handler: async (ctx, { storageId, fileUrl, prompt, fileName }) => {
+    // Load file from Convex storage or external URL
+    let fileBuffer: Buffer;
+    let mediaType = "application/pdf";
+
+    if (storageId) {
+      const fileBlob = await ctx.storage.get(storageId);
+      if (!fileBlob) {
+        throw new Error("File not found in storage");
+      }
+      const arrayBuffer = await fileBlob.arrayBuffer();
+      fileBuffer = Buffer.from(arrayBuffer);
+      mediaType = fileName?.toLowerCase().endsWith(".pdf")
+        ? "application/pdf"
+        : fileBlob.type || "application/pdf";
+    } else if (fileUrl) {
+      const response = await fetch(fileUrl);
+      if (!response.ok) throw new Error(`Failed to fetch file from URL: ${response.statusText}`);
+      const arrayBuffer = await response.arrayBuffer();
+      fileBuffer = Buffer.from(arrayBuffer);
+      mediaType = fileName?.toLowerCase().endsWith(".pdf") ? "application/pdf" : response.headers.get("content-type") || "application/pdf";
+    } else {
+      throw new Error("No file reference provided");
     }
 
-    // Convert Blob to Buffer for native Google AI SDK
-    const arrayBuffer = await fileBlob.arrayBuffer();
-    const fileBuffer = Buffer.from(arrayBuffer);
-
-    // Determine media type
-    const mediaType = fileName?.toLowerCase().endsWith(".pdf")
-      ? "application/pdf"
-      : fileBlob.type || "application/pdf";
-
-    // Use native Google AI SDK format with type: "file"
     const result = await generateText({
       model: geminiVision,
       messages: [
@@ -205,7 +214,8 @@ export const analyzePDF = internalAction({
  */
 export const analyzePDFStructured = internalAction({
   args: {
-    storageId: v.id("_storage"),
+    storageId: v.optional(v.id("_storage")),
+    fileUrl: v.optional(v.string()),
     prompt: v.string(),
     extractionType: v.union(
       v.literal("summary"),
@@ -216,14 +226,24 @@ export const analyzePDFStructured = internalAction({
     ),
     customSchema: v.optional(v.any()),
   },
-  handler: async (ctx, { storageId, prompt, extractionType, customSchema }) => {
-    const fileBlob = await ctx.storage.get(storageId);
-    if (!fileBlob) {
-      throw new Error("File not found in storage");
-    }
+  handler: async (ctx, { storageId, fileUrl, prompt, extractionType, customSchema }) => {
+    let fileBuffer: Buffer;
 
-    const arrayBuffer = await fileBlob.arrayBuffer();
-    const fileBuffer = Buffer.from(arrayBuffer);
+    if (storageId) {
+      const fileBlob = await ctx.storage.get(storageId);
+      if (!fileBlob) {
+        throw new Error("File not found in storage");
+      }
+      const arrayBuffer = await fileBlob.arrayBuffer();
+      fileBuffer = Buffer.from(arrayBuffer);
+    } else if (fileUrl) {
+      const response = await fetch(fileUrl);
+      if (!response.ok) throw new Error(`Failed to fetch file from URL: ${response.statusText}`);
+      const arrayBuffer = await response.arrayBuffer();
+      fileBuffer = Buffer.from(arrayBuffer);
+    } else {
+      throw new Error("No file reference provided");
+    }
 
     // Build extraction prompt based on type
     let extractionPrompt = prompt;
@@ -330,7 +350,8 @@ export const analyzeMultipleFiles = internalAction({
   args: {
     files: v.array(
       v.object({
-        storageId: v.id("_storage"),
+        storageId: v.optional(v.id("_storage")),
+        fileUrl: v.optional(v.string()),
         fileName: v.string(),
         mediaType: v.string(),
       })
@@ -341,15 +362,29 @@ export const analyzeMultipleFiles = internalAction({
     // Fetch all files and convert to Buffers
     const fileBuffers = await Promise.all(
       files.map(async (file) => {
-        const blob = await ctx.storage.get(file.storageId);
-        if (!blob) {
-          throw new Error(`File not found: ${file.fileName}`);
+        if (file.storageId) {
+          const blob = await ctx.storage.get(file.storageId);
+          if (!blob) {
+            throw new Error(`File not found: ${file.fileName}`);
+          }
+          const arrayBuffer = await blob.arrayBuffer();
+          return {
+            ...file,
+            data: Buffer.from(arrayBuffer),
+          };
         }
-        const arrayBuffer = await blob.arrayBuffer();
-        return {
-          ...file,
-          data: Buffer.from(arrayBuffer),
-        };
+
+        if (file.fileUrl) {
+          const response = await fetch(file.fileUrl);
+          if (!response.ok) throw new Error(`Failed to fetch ${file.fileName}: ${response.statusText}`);
+          const arrayBuffer = await response.arrayBuffer();
+          return {
+            ...file,
+            data: Buffer.from(arrayBuffer),
+          };
+        }
+
+        throw new Error(`Missing file reference for ${file.fileName}`);
       })
     );
 
@@ -390,19 +425,33 @@ export const analyzeMultipleFiles = internalAction({
  */
 export const analyzeImage = internalAction({
   args: {
-    storageId: v.id("_storage"),
+    storageId: v.optional(v.id("_storage")),
+    fileUrl: v.optional(v.string()),
     prompt: v.string(),
     mediaType: v.optional(v.string()),
   },
-  handler: async (ctx, { storageId, prompt, mediaType }) => {
-    const fileBlob = await ctx.storage.get(storageId);
-    if (!fileBlob) {
-      throw new Error("File not found in storage");
-    }
+  handler: async (ctx, { storageId, fileUrl, prompt, mediaType }) => {
+    let fileBuffer: Buffer;
+    let mimeType = mediaType || "image/png";
 
-    const arrayBuffer = await fileBlob.arrayBuffer();
-    const fileBuffer = Buffer.from(arrayBuffer);
-    const mimeType = mediaType || fileBlob.type || "image/png";
+    if (storageId) {
+      const fileBlob = await ctx.storage.get(storageId);
+      if (!fileBlob) {
+        throw new Error("File not found in storage");
+      }
+
+      const arrayBuffer = await fileBlob.arrayBuffer();
+      fileBuffer = Buffer.from(arrayBuffer);
+      mimeType = mediaType || fileBlob.type || "image/png";
+    } else if (fileUrl) {
+      const response = await fetch(fileUrl);
+      if (!response.ok) throw new Error(`Failed to fetch image from URL: ${response.statusText}`);
+      const arrayBuffer = await response.arrayBuffer();
+      fileBuffer = Buffer.from(arrayBuffer);
+      mimeType = mediaType || response.headers.get("content-type") || "image/png";
+    } else {
+      throw new Error("No file reference provided");
+    }
 
     const result = await generateText({
       model: geminiVision,
