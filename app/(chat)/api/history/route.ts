@@ -1,14 +1,10 @@
-import { auth } from "@/app/(auth)/auth";
 import { getChatsByUserId } from "@/db/queries";
 
 // Guest user ID for unauthenticated access
 const GUEST_USER_ID = "guest-user-00000000-0000-0000-0000-000000000000";
 
 export async function GET() {
-  const session = await auth();
-  
-  // AUTH BYPASS: Use guest user ID if no session
-  const userId = session?.user?.id || GUEST_USER_ID;
+  const userId = GUEST_USER_ID;
 
   try {
     const chats = await getChatsByUserId({ id: userId });

@@ -1,5 +1,6 @@
-import { auth } from "@/app/(auth)/auth";
 import { getReservationById, updateReservation } from "@/db/queries";
+
+const GUEST_USER_ID = "guest-user-00000000-0000-0000-0000-000000000000";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -9,16 +10,12 @@ export async function GET(request: Request) {
     return new Response("Not Found!", { status: 404 });
   }
 
-  const session = await auth();
-
-  if (!session || !session.user) {
-    return new Response("Unauthorized!", { status: 401 });
-  }
-
   try {
     const reservation = await getReservationById({ id });
 
-    if (reservation.userId !== session.user.id) {
+    // In guest mode we simply return the reservation
+    if (reservation.userId !== GUEST_USER_ID && reservation.userId != null) {
+      // keep basic guard if reservation tied to a specific user
       return new Response("Unauthorized!", { status: 401 });
     }
 
@@ -38,12 +35,6 @@ export async function PATCH(request: Request) {
     return new Response("Not Found!", { status: 404 });
   }
 
-  const session = await auth();
-
-  if (!session || !session.user) {
-    return new Response("Unauthorized!", { status: 401 });
-  }
-
   try {
     const reservation = await getReservationById({ id });
 
@@ -51,7 +42,7 @@ export async function PATCH(request: Request) {
       return new Response("Reservation not found!", { status: 404 });
     }
 
-    if (reservation.userId !== session.user.id) {
+    if (reservation.userId !== GUEST_USER_ID && reservation.userId != null) {
       return new Response("Unauthorized!", { status: 401 });
     }
 

@@ -8,7 +8,6 @@ import {
   generateSampleFlightStatus,
   generateSampleSeatSelection,
 } from "@/ai/actions";
-import { auth } from "@/app/(auth)/auth";
 import {
   createReservation,
   deleteChatById,
@@ -24,10 +23,8 @@ const GUEST_USER_ID = "guest-user-00000000-0000-0000-0000-000000000000";
 export async function POST(request: Request) {
   const { id, messages } = await request.json();
 
-  const session = await auth();
-  
-  // AUTH BYPASS: Use guest user ID if no session
-  const userId = session?.user?.id || GUEST_USER_ID;
+  // Use guest user when no auth is available
+  const userId = GUEST_USER_ID;
 
   const coreMessages = convertToCoreMessages(messages).filter(
     (message) => message.content.length > 0,
@@ -134,8 +131,7 @@ export async function POST(request: Request) {
         }),
         execute: async (props) => {
           const { totalPriceInUSD } = await generateReservationPrice(props);
-          const innerSession = await auth();
-          const reservationUserId = innerSession?.user?.id || GUEST_USER_ID;
+          const reservationUserId = GUEST_USER_ID;
 
           const id = generateUUID();
 
