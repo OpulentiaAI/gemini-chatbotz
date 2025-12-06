@@ -39,7 +39,6 @@ export async function POST(request: Request) {
       token: process.env.BLOB_READ_WRITE_TOKEN,
       allowedContentTypes: ALLOWED_TYPES,
       maximumSizeInBytes: MAX_FILE_SIZE_BYTES,
-      contentType,
       access: "public",
       addRandomSuffix: true,
       pathname: filename,
