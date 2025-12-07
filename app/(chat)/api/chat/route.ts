@@ -33,6 +33,13 @@ export async function POST(request: Request) {
     const userId = GUEST_USER_ID;
     console.log('Using userId:', userId);
 
+    // TEMPORARY: Skip AI call and just return a test response
+    console.log('Skipping AI call, returning test response');
+    return new Response('Test response: Chat API is working but AI is disabled for debugging', {
+      status: 200,
+      headers: { 'Content-Type': 'text/plain' },
+    });
+
     const coreMessages = convertToCoreMessages(messages).filter(
       (message) => message.content.length > 0,
     );
