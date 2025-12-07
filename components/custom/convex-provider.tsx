@@ -6,7 +6,7 @@ import { ReactNode } from "react";
 
 import { authClient } from "@/lib/auth-client";
 
-const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!, {
+const convex = new ConvexReactClient("https://brilliant-ferret-250.convex.cloud", {
   expectAuth: true,
 });
 
