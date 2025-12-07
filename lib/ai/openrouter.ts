@@ -1,8 +1,12 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 
+console.log('Initializing OpenRouter with API key present:', !!process.env.OPENROUTER_API_KEY);
+
 export const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
+
+console.log('OpenRouter client created successfully');
 
 export type OpenRouterModelId =
   | "openai/gpt-4o"
@@ -294,5 +298,8 @@ export function getModelDefinition(modelId: OpenRouterModelId): ModelDefinition 
 }
 
 export function getOpenRouterModel(modelId: OpenRouterModelId = DEFAULT_MODEL) {
-  return openrouter(modelId);
+  console.log('Creating OpenRouter model:', modelId);
+  const model = openrouter(modelId);
+  console.log('Model created for:', modelId, 'result:', !!model);
+  return model;
 }

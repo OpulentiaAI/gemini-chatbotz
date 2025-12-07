@@ -21,18 +21,28 @@ import { generateUUID } from "@/lib/utils";
 const GUEST_USER_ID = "guest-user-00000000-0000-0000-0000-000000000000";
 
 export async function POST(request: Request) {
-  const { id, messages } = await request.json();
+  try {
+    console.log('Chat API called with request:', request.url);
 
-  // Use guest user when no auth is available
-  const userId = GUEST_USER_ID;
+    const body = await request.json();
+    console.log('Request body:', JSON.stringify(body, null, 2));
 
-  const coreMessages = convertToCoreMessages(messages).filter(
-    (message) => message.content.length > 0,
-  );
+    const { id, messages } = body;
 
-  const result = await streamText({
-    model: geminiProModel,
-    system: `\n
+    // Use guest user when no auth is available
+    const userId = GUEST_USER_ID;
+    console.log('Using userId:', userId);
+
+    const coreMessages = convertToCoreMessages(messages).filter(
+      (message) => message.content.length > 0,
+    );
+    console.log('Core messages:', JSON.stringify(coreMessages, null, 2));
+
+    console.log('Initializing streamText with model:', geminiProModel);
+
+    const result = await streamText({
+      model: geminiProModel,
+      system: `\n
         - you help users book flights!
         - keep your responses limited to a sentence.
         - DO NOT output lists.
@@ -51,7 +61,7 @@ export async function POST(request: Request) {
           - display boarding pass (DO NOT display boarding pass without verifying payment)
         '
       `,
-    messages: coreMessages,
+      messages: coreMessages,
     tools: {
       getWeather: {
         description: "Get the current weather at a location",
@@ -212,14 +222,17 @@ export async function POST(request: Request) {
       },
     },
     onFinish: async ({ response }) => {
+      console.log('Stream finished, response:', response);
       // AUTH BYPASS: Save chat for guest users too
       try {
         const responseMessages = response.messages || [];
+        console.log('Saving chat with messages:', responseMessages.length);
         await saveChat({
           id,
           messages: [...coreMessages, ...responseMessages],
           userId: userId,
         });
+        console.log('Chat saved successfully');
       } catch (error) {
         console.error("Failed to save chat (guest mode):", error);
       }
@@ -230,7 +243,15 @@ export async function POST(request: Request) {
     },
   });
 
+  console.log('Returning stream response');
   return result.toTextStreamResponse({});
+  } catch (error) {
+    console.error('Chat API error:', error);
+    return new Response(`Internal Server Error: ${error.message}`, {
+      status: 500,
+      headers: { 'Content-Type': 'text/plain' },
+    });
+  }
 }
 
 export async function DELETE(request: Request) {
