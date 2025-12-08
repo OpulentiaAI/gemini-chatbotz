@@ -80,3 +80,28 @@ pnpm dev
 ```
 
 Your app should now be running on [localhost:3000](http://localhost:3000/).
+
+## Railway deployment (production)
+
+This repo includes `railway.toml` for Nixpacks. The start command is defined in `package.json` as `next start --hostname 0.0.0.0 --port ${PORT:-3000}`, so Railway's `deploy.startCommand` is simply `pnpm start`.
+
+Minimal env needed on Railway (example values that are live in production):
+
+```bash
+NEXT_PUBLIC_CONVEX_URL=https://brilliant-ferret-250.convex.cloud
+NEXT_PUBLIC_CONVEX_SITE_URL=https://brilliant-ferret-250.convex.site
+SITE_URL=https://chat.opulentia.ai
+
+# Required keys
+BETTER_AUTH_SECRET=...
+OPENROUTER_API_KEY=...
+GOOGLE_GENERATIVE_AI_API_KEY=...
+EXA_API_KEY=...
+BLOB_READ_WRITE_TOKEN=...
+```
+
+Deploy from the project root:
+
+```bash
+railway up --service chat-opulent
+```

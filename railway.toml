@@ -1,0 +1,14 @@
+[build]
+# Use Nixpacks (Railway default) to detect a Node environment and install deps via pnpm.
+builder = "NIXPACKS"
+buildCommand = "pnpm run build"
+[build.env]
+# Next.js 16 requires Node >= 20.9.0; pin Nixpacks node to 20.x.
+NIXPACKS_NODE_VERSION = "20"
+
+[deploy]
+# Start command now binds to PORT/0.0.0.0 via package.json.
+startCommand = "pnpm start"
+healthcheckPath = "/"
+healthcheckTimeout = 100
+
