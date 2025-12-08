@@ -4,22 +4,16 @@ import { internalAction, action } from "./_generated/server";
 import { v } from "convex/values";
 import { generateObject, generateText } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { z } from "zod";
 
 const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
-// Native Google AI SDK for file handling (PDFs, images) - requires Google API key
-const google = createGoogleGenerativeAI({
-  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-});
-
 // Use Gemini 3 Pro Preview via OpenRouter for text/object generation
 const geminiFlash = openrouter("google/gemini-3-pro-preview");
-// For file/vision inputs - uses native Google AI SDK for file upload support
-const geminiVision = google("google/gemini-2.0-flash-exp");
+// For file/vision inputs - use Gemini 2.0 Flash via OpenRouter with base64 images
+const geminiVision = openrouter("google/gemini-2.0-flash-exp");
 // Nano Banana Pro - Image generation model
 const nanoBananaPro = openrouter("google/gemini-3-pro-image-preview");
 
@@ -146,8 +140,8 @@ export const generateReservationPrice = internalAction({
 // =============================================================================
 
 /**
- * Analyze a PDF document using NATIVE Google AI SDK.
- * OpenRouter doesn't support PDF files - must use native Google provider.
+ * Analyze a PDF document using OpenRouter with base64 encoding.
+ * Converts PDF to base64 data URL for OpenRouter compatibility.
  */
 export const analyzePDF = internalAction({
   args: {
@@ -181,6 +175,10 @@ export const analyzePDF = internalAction({
       throw new Error("No file reference provided");
     }
 
+    // Convert to base64 data URL for OpenRouter compatibility
+    const base64Data = fileBuffer.toString('base64');
+    const dataUrl = `data:${mediaType};base64,${base64Data}`;
+
     const result = await generateText({
       model: geminiVision,
       messages: [
@@ -192,9 +190,10 @@ export const analyzePDF = internalAction({
               text: prompt,
             },
             {
-              type: "file",
-              data: fileBuffer,
-              mediaType: mediaType,
+              type: "image_url",
+              image_url: {
+                url: dataUrl,
+              },
             },
           ],
         },
@@ -307,6 +306,9 @@ export const analyzePDFStructured = internalAction({
     }
 
     // First, analyze the PDF to get text content using base64 data URL
+    const base64Data = fileBuffer.toString('base64');
+    const dataUrl = `data:application/pdf;base64,${base64Data}`;
+
     const analysisResult = await generateText({
       model: geminiVision,
       messages: [
@@ -318,9 +320,10 @@ export const analyzePDFStructured = internalAction({
               text: extractionPrompt,
             },
             {
-              type: "file",
-              data: fileBuffer,
-              mediaType: "application/pdf",
+              type: "image_url",
+              image_url: {
+                url: dataUrl,
+              },
             },
           ],
         },
@@ -343,7 +346,7 @@ export const analyzePDFStructured = internalAction({
 
 /**
  * Multi-file analysis - analyze multiple PDFs or images together.
- * Uses native Google AI SDK for file support.
+ * Uses OpenRouter with base64 encoding for file support.
  */
 export const analyzeMultipleFiles = internalAction({
   args: {
@@ -387,16 +390,19 @@ export const analyzeMultipleFiles = internalAction({
       })
     );
 
-    // Build message content with all files using native Google format
-    const content: Array<{ type: "text"; text: string } | { type: "file"; data: Buffer; mediaType: string }> = [
+    // Build message content with all files using OpenRouter base64 format
+    const content: Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }> = [
       { type: "text", text: prompt },
     ];
 
     for (const file of fileBuffers) {
+      const base64Data = file.data.toString('base64');
+      const dataUrl = `data:${file.mediaType};base64,${base64Data}`;
       content.push({
-        type: "file",
-        data: file.data,
-        mediaType: file.mediaType,
+        type: "image_url",
+        image_url: {
+          url: dataUrl,
+        },
       });
     }
 
@@ -419,8 +425,8 @@ export const analyzeMultipleFiles = internalAction({
 });
 
 /**
- * Analyze an image using Gemini's vision capabilities.
- * Uses native Google AI SDK for file support.
+ * Analyze an image using Gemini's vision capabilities via OpenRouter.
+ * Uses base64 encoding for image upload.
  */
 export const analyzeImage = internalAction({
   args: {
@@ -452,6 +458,10 @@ export const analyzeImage = internalAction({
       throw new Error("No file reference provided");
     }
 
+    // Convert to base64 data URL for OpenRouter compatibility
+    const base64Data = fileBuffer.toString('base64');
+    const dataUrl = `data:${mimeType};base64,${base64Data}`;
+
     const result = await generateText({
       model: geminiVision,
       messages: [
@@ -463,9 +473,10 @@ export const analyzeImage = internalAction({
               text: prompt,
             },
             {
-              type: "file",
-              data: fileBuffer,
-              mediaType: mimeType,
+              type: "image_url",
+              image_url: {
+                url: dataUrl,
+              },
             },
           ],
         },

@@ -5,11 +5,8 @@
 Set these environment variables in your Convex dashboard (or `.env.local` for local dev):
 
 ```bash
-# OpenRouter API key for multi-model support
+# OpenRouter API key for multi-model support and file analysis
 OPENROUTER_API_KEY=your_openrouter_api_key
-
-# Google Generative AI API key for PDF/file analysis (Gemini File API)
-GOOGLE_GENERATIVE_AI_API_KEY=your_google_ai_api_key
 
 # Exa API key for web search
 EXA_API_KEY=your_exa_api_key
@@ -22,7 +19,7 @@ CONVEX_SITE_URL=https://your-deployment.convex.site
 
 ## PDF & File Analysis
 
-The app uses the native `@ai-sdk/google` provider for file analysis with Gemini's File API. This supports:
+The app uses OpenRouter with base64-encoded files for analysis via Gemini models. This supports:
 
 - **PDF Analysis**: Direct PDF processing without text extraction
 - **Image Analysis**: Vision capabilities for images
