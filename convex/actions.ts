@@ -11,15 +11,14 @@ const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
-// Native Google AI SDK with OpenRouter as backend - keeps native file format support
+// Native Google AI SDK for file handling (PDFs, images) - requires Google API key
 const google = createGoogleGenerativeAI({
-  apiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: "https://openrouter.ai/api/v1",
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
 });
 
 // Use Gemini 3 Pro Preview via OpenRouter for text/object generation
 const geminiFlash = openrouter("google/gemini-3-pro-preview");
-// For file/vision inputs - native Google SDK format routed through OpenRouter
+// For file/vision inputs - uses native Google AI SDK for file upload support
 const geminiVision = google("google/gemini-2.0-flash-exp");
 // Nano Banana Pro - Image generation model
 const nanoBananaPro = openrouter("google/gemini-3-pro-image-preview");
