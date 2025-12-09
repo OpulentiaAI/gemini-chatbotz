@@ -9,6 +9,13 @@ import { TableProvider, TableHeader, TableHeaderGroup, TableHead, TableColumnHea
 import { Stories, StoriesContent, Story, StoryImage, StoryOverlay, StoryTitle } from "@/components/kibo-ui/stories";
 import { cn } from "@/lib/utils";
 import { ArtifactPreviewButton } from "./artifact-panel";
+import {
+  WebPreview,
+  WebPreviewBody,
+  WebPreviewNavigation,
+  WebPreviewNavigationButton,
+  WebPreviewUrl,
+} from "@/components/ai-elements/web-preview";
 
 interface ToolViewProps {
   toolName: string;
@@ -687,19 +694,25 @@ function LivePreviewEmbed({ liveUrl, title = "Browser Session" }: { liveUrl: str
           </a>
         </div>
       </div>
-      <div 
+
+      <WebPreview
+        defaultUrl={liveUrl}
         className={cn(
-          "rounded-lg border border-chocolate-200 dark:border-chocolate-700 overflow-hidden transition-all duration-300",
-          isExpanded ? "h-[500px]" : "h-[280px]"
+          "overflow-hidden border border-chocolate-200 dark:border-chocolate-700 transition-all duration-300",
+          isExpanded ? "h-[520px]" : "h-[320px]"
         )}
       >
-        <iframe
-          src={liveUrl}
-          className="w-full h-full"
-          title={title}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-        />
-      </div>
+        <WebPreviewNavigation className="bg-chocolate-50 dark:bg-chocolate-900">
+          <WebPreviewUrl />
+          <WebPreviewNavigationButton
+            onClick={() => window.open(liveUrl, "_blank", "noopener,noreferrer")}
+            tooltip="Open in new tab"
+          >
+            <ExternalLink className="w-4 h-4" />
+          </WebPreviewNavigationButton>
+        </WebPreviewNavigation>
+        <WebPreviewBody src={liveUrl} title={title} />
+      </WebPreview>
     </div>
   );
 }
