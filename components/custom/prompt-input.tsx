@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Search, Plus, MoreHorizontal, Mic, ArrowUp, Bot, ChevronDown, Sparkles, StopCircle, Check, Zap, Brain, Gauge, FileText, Image, X } from "lucide-react";
+import { Search, Plus, MoreHorizontal, Mic, ArrowUp, Bot, ChevronDown, Sparkles, StopCircle, Check, Zap, Brain, Gauge, FileText, Image, X, CornerDownLeft, Loader2 } from "lucide-react";
+import { StopIcon } from "@radix-ui/react-icons";
+import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useMutation } from "convex/react";
@@ -26,6 +28,7 @@ type PromptInputProps = {
   onSubmit: (value: string, attachments?: File[], modelId?: OpenRouterModelId) => void;
   onStop?: () => void;
   isLoading?: boolean;
+  isStreaming?: boolean;
   placeholder?: string;
   className?: string;
   selectedModel?: OpenRouterModelId;
@@ -55,6 +58,7 @@ export const PromptInput = ({
   onSubmit,
   onStop,
   isLoading = false,
+  isStreaming = false,
   placeholder = "Describe your idea",
   className = "",
   selectedModel = "anthropic/claude-3.5-sonnet",
@@ -336,31 +340,25 @@ export const PromptInput = ({
               </button>
 
               {/* Submit/Stop Button */}
-              {isLoading ? (
-                <button
-                  type="button"
-                  onClick={onStop}
-                  className="p-2 rounded-full bg-red-600 text-white hover:bg-red-700 transition-all duration-200 flex items-center justify-center cursor-pointer"
-                  title="Stop generating"
-                >
-                  <StopCircle className="w-5 h-5" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={!value.trim()}
-                  className={`
-                    p-2 rounded-full transition-all duration-200 flex items-center justify-center
-                    ${value.trim() 
-                      ? 'bg-chocolate-700 text-chocolate-50 hover:bg-chocolate-800 cursor-pointer' 
-                      : 'bg-chocolate-100 dark:bg-chocolate-800 text-chocolate-400 cursor-not-allowed'}
-                  `}
-                  title="Send message"
-                >
-                  <ArrowUp className="w-5 h-5" />
-                </button>
-              )}
+              <Button
+                disabled={
+                  (!isStreaming && value.trim().length === 0) ||
+                  isLoading
+                }
+                onClick={isStreaming ? onStop : handleSubmit}
+                size="sm"
+                className="h-8 px-3"
+                aria-label={isStreaming ? 'Stop' : 'Send'}
+              >
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : isStreaming ? (
+                  <StopIcon />
+                ) : (
+                  <CornerDownLeft className="w-4 h-4" />
+                )}
+                {!isStreaming ? 'Build' : 'Stop'}
+              </Button>
             </div>
           </div>
         </div>

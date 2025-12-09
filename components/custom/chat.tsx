@@ -293,6 +293,7 @@ export function Chat({
             onSubmit={handleSubmit}
             onStop={handleStop}
             isLoading={isLoading || isStreamingResponse || isUploading}
+            isStreaming={isStreamingResponse}
             placeholder={isUploading ? "Uploading files..." : "Ask about flights, weather, code, or upload a PDF..."}
             selectedModel={selectedModel}
             onModelChange={handleModelChange}

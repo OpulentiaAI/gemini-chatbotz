@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { StopIcon } from "@radix-ui/react-icons";
 import {
   Command,
   CommandEmpty,
@@ -1009,39 +1010,44 @@ export const PromptInputActionMenuItem = ({
 // Note: Actions that perform side-effects (like opening a file dialog)
 // are provided in opt-in modules (e.g., prompt-input-attachments).
 
-export type PromptInputSubmitProps = ComponentProps<typeof InputGroupButton> & {
+export type PromptInputSubmitProps = ComponentProps<typeof Button> & {
   status?: ChatStatus;
+  isStreaming?: boolean;
+  sendMessageInProgress?: boolean;
+  disabled?: boolean;
 };
 
 export const PromptInputSubmit = ({
   className,
-  variant = "default",
-  size = "icon-sm",
   status,
+  isStreaming,
+  sendMessageInProgress,
+  disabled,
   children,
   ...props
 }: PromptInputSubmitProps) => {
-  let Icon = <CornerDownLeftIcon className="size-4" />;
-
-  if (status === "submitted") {
-    Icon = <Loader2Icon className="size-4 animate-spin" />;
-  } else if (status === "streaming") {
-    Icon = <SquareIcon className="size-4" />;
-  } else if (status === "error") {
-    Icon = <XIcon className="size-4" />;
-  }
-
   return (
-    <InputGroupButton
-      aria-label="Submit"
-      className={cn(className)}
-      size={size}
-      type="submit"
-      variant={variant}
+    <Button
+      disabled={
+        (!isStreaming && !sendMessageInProgress) ||
+        sendMessageInProgress ||
+        disabled
+      }
+      onClick={props.onClick}
+      size="sm"
+      className="h-8 px-3"
+      aria-label={isStreaming ? 'Stop' : 'Send'}
       {...props}
     >
-      {children ?? Icon}
-    </InputGroupButton>
+      {sendMessageInProgress ? (
+        <Loader2Icon className="w-4 h-4 animate-spin" />
+      ) : isStreaming ? (
+        <StopIcon />
+      ) : (
+        <CornerDownLeftIcon className="w-4 h-4" />
+      )}
+      {!isStreaming ? 'Build' : 'Stop'}
+    </Button>
   );
 };
 
