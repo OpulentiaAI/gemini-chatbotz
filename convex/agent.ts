@@ -34,6 +34,7 @@ type OpenRouterModelId =
   | "minimax/minimax-m2"
   | "x-ai/grok-code-fast-1"
   | "z-ai/glm-4.6"
+  | "z-ai/glm-4.6v"
   | "qwen/qwen3-vl-235b-a22b-instruct";
 
 const baseInstructions = `

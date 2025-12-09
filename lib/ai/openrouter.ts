@@ -32,6 +32,7 @@ export type OpenRouterModelId =
   | "minimax/minimax-m2"
   | "x-ai/grok-code-fast-1"
   | "z-ai/glm-4.6"
+  | "z-ai/glm-4.6v"
   | "qwen/qwen3-vl-235b-a22b-instruct";
 
 export interface ModelDefinition {
@@ -272,6 +273,17 @@ export const OPENROUTER_MODELS: ModelDefinition[] = [
     maxOutput: 4096,
     pricing: { prompt: 0.0, completion: 0.0 },
     capabilities: { functionCalling: true, streaming: true },
+  },
+  {
+    id: "z-ai/glm-4.6v",
+    name: "GLM 4.6V",
+    provider: "Z.AI",
+    description:
+      "Multimodal GLM-4.6V with high-fidelity visual understanding, long-context reasoning, and native multimodal function calling.",
+    contextLength: 131072,
+    maxOutput: 8192,
+    pricing: { prompt: 0.0003, completion: 0.0009 },
+    capabilities: { vision: true, functionCalling: true, streaming: true },
   },
   {
     id: "qwen/qwen3-vl-235b-a22b-instruct",

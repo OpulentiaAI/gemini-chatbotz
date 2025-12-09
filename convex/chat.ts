@@ -31,6 +31,7 @@ const modelValidator = v.optional(v.union(
   v.literal("minimax/minimax-m2"),
   v.literal("x-ai/grok-code-fast-1"),
   v.literal("z-ai/glm-4.6"),
+  v.literal("z-ai/glm-4.6v"),
   v.literal("qwen/qwen3-vl-235b-a22b-instruct")
 ));
 

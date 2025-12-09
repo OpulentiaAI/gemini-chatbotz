@@ -1,0 +1,3 @@
+ALTER TABLE "Chat"
+ADD COLUMN IF NOT EXISTS "messages" json NOT NULL DEFAULT '[]';
+

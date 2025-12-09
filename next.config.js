@@ -5,9 +5,6 @@ module.exports = {
   images: {
     remotePatterns: [],
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     ignoreBuildErrors: true,
   },
