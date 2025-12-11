@@ -11,6 +11,7 @@ const modelValidator = v.optional(v.union(
   v.literal("openai/gpt-4o"),
   v.literal("openai/gpt-4o-mini"),
   v.literal("openai/gpt-4-turbo"),
+  v.literal("openai/gpt-5.2"),
   v.literal("anthropic/claude-3.5-sonnet"),
   v.literal("anthropic/claude-3-opus"),
   v.literal("anthropic/claude-3-haiku"),
