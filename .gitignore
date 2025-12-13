@@ -23,6 +23,7 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 .dev.log
+.__shadcn_preset_tmp__/
 
 # local env files
 .env.local

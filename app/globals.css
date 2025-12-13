@@ -6,29 +6,21 @@
 @source "../node_modules/streamdown/dist/index.js";
 
 :root {
-    --foreground-rgb: 0, 0, 0;
-    --background-start-rgb: 214, 219, 220;
-    --background-end-rgb: 255, 255, 255;
-    
-    /* Chocolate color palette */
-    --chocolate-50: 33 58% 97%;
-    --chocolate-100: 33 52% 94%;
-    --chocolate-200: 33 46% 88%;
-    --chocolate-300: 33 40% 82%;
-    --chocolate-400: 33 36% 72%;
-    --chocolate-500: 33 32% 58%;
-    --chocolate-600: 33 30% 43%;
-    --chocolate-700: 33 32% 30%;
-    --chocolate-800: 33 34% 22%;
-    --chocolate-900: 33 38% 16%;
-}
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
 
-@media (prefers-color-scheme: dark) {
-    :root {
-        --foreground-rgb: 255, 255, 255;
-        --background-start-rgb: 0, 0, 0;
-        --background-end-rgb: 0, 0, 0;
-    }
+  /* Chocolate color palette (kept for compatibility) */
+  --chocolate-50: 33 58% 97%;
+  --chocolate-100: 33 52% 94%;
+  --chocolate-200: 33 46% 88%;
+  --chocolate-300: 33 40% 82%;
+  --chocolate-400: 33 36% 72%;
+  --chocolate-500: 33 32% 58%;
+  --chocolate-600: 33 30% 43%;
+  --chocolate-700: 33 32% 30%;
+  --chocolate-800: 33 34% 22%;
+  --chocolate-900: 33 38% 16%;
 }
 
 @layer utilities {
@@ -39,59 +31,76 @@
 
 @layer base {
     :root {
-        /* Light theme - warm chocolate tones */
-        --background: 33 58% 97%;
-        --foreground: 33 38% 16%;
-        --card: 33 52% 94%;
-        --card-foreground: 33 38% 16%;
-        --popover: 33 58% 97%;
-        --popover-foreground: 33 38% 16%;
-        --primary: 33 32% 30%;
-        --primary-foreground: 33 58% 97%;
-        --secondary: 33 46% 88%;
-        --secondary-foreground: 33 38% 16%;
-        --muted: 33 46% 88%;
-        --muted-foreground: 33 32% 58%;
-        --accent: 33 40% 82%;
-        --accent-foreground: 33 38% 16%;
-        --destructive: 0 84.2% 60.2%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 33 40% 82%;
-        --input: 33 46% 88%;
-        --ring: 33 32% 30%;
-        --chart-1: 33 76% 61%;
-        --chart-2: 33 58% 39%;
-        --chart-3: 33 37% 24%;
-        --chart-4: 33 74% 66%;
-        --chart-5: 33 87% 67%;
-        --radius: 0.75rem;
+        /* Lyra preset theme (neutral + amber) */
+        --background: 1 0 0;
+        --foreground: 0.145 0 0;
+        --card: 1 0 0;
+        --card-foreground: 0.145 0 0;
+        --popover: 1 0 0;
+        --popover-foreground: 0.145 0 0;
+        --primary: 0.67 0.16 58;
+        --primary-foreground: 0.99 0.02 95;
+        --secondary: 0.967 0.001 286.375;
+        --secondary-foreground: 0.21 0.006 285.885;
+        --muted: 0.97 0 0;
+        --muted-foreground: 0.556 0 0;
+        --accent: 0.67 0.16 58;
+        --accent-foreground: 0.99 0.02 95;
+        --destructive: 0.58 0.22 27;
+        --destructive-foreground: 0.985 0 0;
+        --border: 0.922 0 0;
+        --input: 0.922 0 0;
+        --ring: 0.708 0 0;
+        --chart-1: 0.88 0.15 92;
+        --chart-2: 0.77 0.16 70;
+        --chart-3: 0.67 0.16 58;
+        --chart-4: 0.56 0.15 49;
+        --chart-5: 0.47 0.12 46;
+        --radius: 0;
+
+        --sidebar: 0.985 0 0;
+        --sidebar-foreground: 0.145 0 0;
+        --sidebar-primary: 0.67 0.16 58;
+        --sidebar-primary-foreground: 0.99 0.02 95;
+        --sidebar-accent: 0.67 0.16 58;
+        --sidebar-accent-foreground: 0.99 0.02 95;
+        --sidebar-border: 0.922 0 0;
+        --sidebar-ring: 0.708 0 0;
     }
     .dark {
-        /* Dark theme - rich chocolate tones */
-        --background: 33 38% 16%;
-        --foreground: 33 52% 94%;
-        --card: 33 34% 22%;
-        --card-foreground: 33 52% 94%;
-        --popover: 33 34% 22%;
-        --popover-foreground: 33 52% 94%;
-        --primary: 33 46% 88%;
-        --primary-foreground: 33 38% 16%;
-        --secondary: 33 32% 30%;
-        --secondary-foreground: 33 52% 94%;
-        --muted: 33 32% 30%;
-        --muted-foreground: 33 36% 72%;
-        --accent: 33 32% 30%;
-        --accent-foreground: 33 52% 94%;
-        --destructive: 0 62.8% 30.6%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 33 32% 30%;
-        --input: 33 32% 30%;
-        --ring: 33 46% 88%;
-        --chart-1: 33 70% 50%;
-        --chart-2: 33 60% 45%;
-        --chart-3: 33 80% 55%;
-        --chart-4: 33 65% 60%;
-        --chart-5: 33 75% 55%;
+        --background: 0.145 0 0;
+        --foreground: 0.985 0 0;
+        --card: 0.205 0 0;
+        --card-foreground: 0.985 0 0;
+        --popover: 0.205 0 0;
+        --popover-foreground: 0.985 0 0;
+        --primary: 0.77 0.16 70;
+        --primary-foreground: 0.28 0.07 46;
+        --secondary: 0.274 0.006 286.033;
+        --secondary-foreground: 0.985 0 0;
+        --muted: 0.269 0 0;
+        --muted-foreground: 0.708 0 0;
+        --accent: 0.77 0.16 70;
+        --accent-foreground: 0.28 0.07 46;
+        --destructive: 0.704 0.191 22.216;
+        --destructive-foreground: 0.985 0 0;
+        --border: 0.269 0 0;
+        --input: 0.269 0 0;
+        --ring: 0.556 0 0;
+        --chart-1: 0.88 0.15 92;
+        --chart-2: 0.77 0.16 70;
+        --chart-3: 0.67 0.16 58;
+        --chart-4: 0.56 0.15 49;
+        --chart-5: 0.47 0.12 46;
+
+        --sidebar: 0.205 0 0;
+        --sidebar-foreground: 0.985 0 0;
+        --sidebar-primary: 0.77 0.16 70;
+        --sidebar-primary-foreground: 0.28 0.07 46;
+        --sidebar-accent: 0.77 0.16 70;
+        --sidebar-accent-foreground: 0.28 0.07 46;
+        --sidebar-border: 0.269 0 0;
+        --sidebar-ring: 0.556 0 0;
     }
 }
 
@@ -102,7 +111,6 @@
 
     body {
         @apply bg-background text-foreground;
-        font-family: 'Monument Grotesk', system-ui, sans-serif;
         font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
         text-rendering: optimizeLegibility;
         -webkit-font-smoothing: antialiased;

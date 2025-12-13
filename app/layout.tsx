@@ -1,4 +1,5 @@
-import { Metadata } from "next";
+import type { Metadata } from "next";
+import { Geist_Mono, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 
 import { Navbar } from "@/components/custom/navbar";
@@ -8,7 +9,9 @@ import { ArtifactProvider } from "@/hooks/use-artifact";
 import { ArtifactPanel } from "@/components/custom/artifact-panel";
 
 import "./globals.css";
-import "./monument-grotesk.css";
+
+const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-sans" });
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://gemini.vercel.ai"),
@@ -43,8 +46,8 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="antialiased font-monument">
+    <html lang="en" suppressHydrationWarning className={`${jetbrainsMono.variable} ${geistMono.variable}`}>
+      <body className="antialiased font-sans">
         <ConvexClientProvider>
           <ThemeProvider
             attribute="class"
