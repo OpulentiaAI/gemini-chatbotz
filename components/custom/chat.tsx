@@ -293,10 +293,10 @@ export function Chat({
 
   // Messages panel content - extracted for reuse in both mobile and desktop layouts
   const MessagesContent = (
-    <div className="flex flex-col justify-between items-center gap-4 w-full h-full">
+    <div className="flex flex-col justify-between items-center gap-4 w-full h-full min-w-0">
       <div
         ref={messagesContainerRef}
-        className="flex flex-col gap-4 h-full w-full items-center overflow-y-scroll px-4"
+        className="flex flex-col gap-4 h-full w-full items-center overflow-y-scroll px-4 min-w-0"
       >
         {messages.length === 0 && <Overview />}
 
@@ -389,17 +389,18 @@ export function Chat({
       {/* Desktop: Split layout when artifact is visible (30% chat, 70% artifact) */}
       {isArtifactVisible && (
         <ResizablePanelGroup
-          className="hidden md:flex flex-1 overflow-hidden"
+          className="hidden md:flex flex-1 w-full max-w-full overflow-hidden"
           direction="horizontal"
+          autoSaveId="chat-artifact-layout"
         >
-          <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
-            <div className="h-full overflow-hidden border-r border-border">
+          <ResizablePanel defaultSize={30} minSize={15} maxSize={50}>
+            <div className="h-full w-full overflow-hidden border-r border-border min-w-0">
               {MessagesContent}
             </div>
           </ResizablePanel>
           <ResizableHandle withHandle />
           <ResizablePanel defaultSize={70} minSize={50}>
-            <div className="h-full overflow-hidden">
+            <div className="h-full w-full overflow-hidden min-w-0">
               <ArtifactPanel />
             </div>
           </ResizablePanel>

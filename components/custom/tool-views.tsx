@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { Plane, CreditCard, MapPin, Ticket, Search, Cloud, FileCode, FileText, Image as ImageIcon, Globe, CheckCircle, ShieldCheck, Sparkles, Code, Table, Monitor, ExternalLink, Maximize2, Play, ImagePlus, Link2, FileDown, TreePine } from "lucide-react";
 import { Snippet, SnippetHeader, SnippetCopyButton, SnippetTabsList, SnippetTabsTrigger, SnippetTabsContent } from "@/components/kibo-ui/snippet";
 import { Spinner } from "@/components/kibo-ui/spinner";
@@ -9,6 +9,7 @@ import { TableProvider, TableHeader, TableHeaderGroup, TableHead, TableColumnHea
 import { Stories, StoriesContent, Story, StoryImage, StoryOverlay, StoryTitle } from "@/components/kibo-ui/stories";
 import { cn } from "@/lib/utils";
 import { ArtifactPreviewButton } from "./artifact-panel";
+import { useArtifact } from "@/hooks/use-artifact";
 import {
   WebPreview,
   WebPreviewBody,
@@ -562,6 +563,24 @@ function DocumentView({ args, result, isLoading }: { args: Record<string, unknow
   const kind = (args.kind as string) || "text";
   const content = (args.content as string) || "";
   const resultData = result as { id?: string; content?: string } | undefined;
+  const { openArtifact } = useArtifact();
+  const hasAutoOpened = useRef(false);
+
+  // Auto-open artifact when document is created/updated
+  useEffect(() => {
+    if (resultData?.id && !hasAutoOpened.current) {
+      hasAutoOpened.current = true;
+      openArtifact({
+        documentId: resultData.id,
+        title,
+        kind: kind as "code" | "text" | "sheet",
+        content: resultData.content || content,
+        language: kind === "code" ? (args.description as string)?.match(/\.(tsx?|jsx?|py|java|go|rust|cpp|c|rb|php|swift|kt)$/i)?.[1] : undefined,
+        messageId: "",
+        status: "idle",
+      });
+    }
+  }, [resultData?.id, title, kind, content, args.description, openArtifact, resultData?.content]);
 
   // Choose icon based on document kind
   const KindIcon = kind === "code" ? Code : kind === "sheet" ? Table : FileText;
