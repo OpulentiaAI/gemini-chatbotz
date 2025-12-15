@@ -282,46 +282,47 @@ When writing code:
 </coding_guidelines>
 
 <memory_system>
-PERSISTENT MEMORY TOOLS:
-You have access to a memory system that stores important information about the user across conversations.
+CORTEX MEMORY SYSTEM:
+You have access to the Cortex memory system - a production-ready memory layer with vector search, facts extraction, and memory spaces.
 
 AVAILABLE TOOLS:
-- addMemory: Store important discoveries, preferences, or context about the user
-- listMemories: Recall previously stored information
-- removeMemory: Delete outdated or incorrect memories
-- updateMemory: Update existing memories with new information
+- addMemory: Store facts and memories about the user (with semantic search support)
+- listMemories: Recall stored facts (optionally filtered by type or search query)
+- searchMemories: Semantic search across all memories for relevant information
+- removeMemory: Delete outdated or incorrect facts
+- updateMemory: Update existing facts with new information
 
-MEMORY CATEGORIES:
-- PREFERENCES: Communication style, formatting preferences, technical level
-- CONTEXT: Background info, current projects, goals, constraints
-- PATTERNS: Common requests, workflows, habits
-- HISTORY: Important past interactions, decisions made
-- SKILLS: Technical skills, expertise areas, experience level
-- ARCHITECTURE: Tech stack decisions, system design patterns
-- BUGS: Known issues, debugging insights, workarounds
-- TESTING: Test strategies, frameworks, requirements
-- CONFIG: Configuration patterns, environment setup
-- GENERAL: Other important information
+FACT TYPES:
+- preference: Communication style, formatting preferences, settings
+- identity: User's name, role, personal info
+- knowledge: Technical skills, expertise areas, domain knowledge
+- relationship: Connections, team members, collaborations
+- event: Past interactions, decisions, important occurrences
+- observation: Patterns, workflows, habits observed over time
+- custom: Other important context
 
 WHEN TO ADD MEMORIES:
 ✅ User expresses a preference ("I prefer concise responses")
+✅ User shares identity info ("My name is...", "I work at...")
 ✅ User shares context ("I'm working on a Next.js project")
 ✅ User demonstrates expertise or skill level
 ✅ Important decisions are made in the conversation
 ✅ User corrects you on something important
 
-WHEN TO LIST MEMORIES:
+WHEN TO SEARCH/LIST MEMORIES:
 ✅ At the start of a new conversation to recall user context
 ✅ Before making assumptions about user preferences
 ✅ When the user references something from a past conversation
+✅ Use searchMemories with specific queries for better recall
 
 BEST PRACTICES:
-1. Check memories at conversation start to personalize responses
+1. Use searchMemories at conversation start with relevant queries
 2. Add memories immediately when you discover important user context
 3. Keep memories CONCISE but ACTIONABLE
-4. Use SPECIFIC categories—don't default to GENERAL
+4. Use appropriate fact types—they help with organization and search
 5. Update memories when information changes rather than creating duplicates
 6. Remove outdated memories to keep the system accurate
+7. Use tags for additional categorization
 </memory_system>
 
 <frontend_aesthetics>
@@ -939,115 +940,147 @@ Supports: multiple aspect ratios, style controls, identity preservation (up to 5
   }),
 
   // ==========================================================================
-  // Memory System (Persistent User Personalization)
+  // Cortex Memory System (Persistent User Personalization with Vector Search)
   // ==========================================================================
   addMemory: createTool({
-    description: `Store important information about the user for future reference and personalization.
+    description: `Store important information about the user using Cortex memory system.
 Use this to remember:
 - User preferences (communication style, formatting preferences, technical level)
 - Project context (what they're working on, goals, constraints)
 - Important patterns (common requests, workflows, habits)
 - Technical skills and expertise areas
-- Past decisions and their reasoning`,
+- Past decisions and their reasoning
+- Facts about the user (identity, relationships, events)`,
     args: z.object({
       content: z.string().describe("Concise memory content to store - should be actionable and specific"),
-      category: z.enum([
-        "PREFERENCES",   // User preferences, settings, communication style
-        "CONTEXT",       // Background info, projects, goals
-        "PATTERNS",      // User's common patterns, workflows, habits
-        "HISTORY",       // Important past interactions, decisions
-        "SKILLS",        // User's technical skills, expertise areas
-        "ARCHITECTURE",  // System design, tech stack, patterns
-        "BUGS",          // Known issues, debugging insights, workarounds
-        "TESTING",       // Test patterns, frameworks, requirements
-        "CONFIG",        // Configuration patterns, environment variables
-        "GENERAL",       // Other important context
-      ]).describe("Category for organizing the memory"),
-      importance: z.number().min(1).max(10).optional().describe("Importance score 1-10 (default 5)"),
+      factType: z.enum([
+        "preference",    // User preferences, settings, communication style
+        "identity",      // User identity, personal info
+        "knowledge",     // Technical skills, expertise, knowledge
+        "relationship",  // Relationships, connections
+        "event",         // Past events, decisions, interactions
+        "observation",   // Patterns, workflows, habits
+        "custom",        // Other important context
+      ]).describe("Type of fact being stored"),
+      importance: z.number().min(0).max(100).optional().describe("Importance score 0-100 (default 50)"),
+      tags: z.array(z.string()).optional().describe("Tags for categorization"),
       explanation: z.string().describe("Why this memory is being added"),
     }),
-    handler: async (ctx, { content, category, importance, explanation }) => {
+    handler: async (ctx, { content, factType, importance, tags, explanation }) => {
       console.log(`[ADD_MEMORY] ${explanation}`);
       
-      // Get userId from thread context - for now use a placeholder approach
-      // In production, this would come from the thread/session context
-      const userId = "default-user"; // Will be overridden by chat action context
+      const userId = "default-user";
+      const memorySpaceId = `user-${userId}`;
       
-      const result = await ctx.runMutation((api as any).memories.create, {
-        content,
-        category,
+      // First ensure memory space exists
+      await ctx.runMutation((api as any).cortexMemorySpaces.getOrCreate, {
+        memorySpaceId,
+        name: `${userId}'s Memory Space`,
+        type: "personal",
+      });
+
+      // Store as a fact in Cortex
+      const result = await ctx.runMutation((api as any).cortexFacts.store, {
+        memorySpaceId,
         userId,
-        importance,
+        fact: content,
+        factType,
+        confidence: importance || 50,
+        sourceType: "tool",
+        tags: tags || [factType],
+      });
+
+      // Also store as vector memory for search
+      await ctx.runMutation((api as any).cortexMemories.store, {
+        memorySpaceId,
+        userId,
+        content,
+        contentType: "fact",
+        sourceType: "tool",
+        importance: importance || 50,
+        tags: tags || [factType],
+        factCategory: factType,
       });
 
       return {
         success: true,
-        memoryId: result.memoryId,
-        message: `Memory added: ${content}`,
+        factId: result?.factId,
+        message: `Memory stored: ${content}`,
       };
     },
   }),
 
   listMemories: createTool({
-    description: `Retrieve stored memories about the user. Use at the start of conversations to recall context and preferences.`,
+    description: `Retrieve stored memories and facts about the user. Use at the start of conversations to recall context and preferences.`,
     args: z.object({
-      category: z.enum([
-        "PREFERENCES",
-        "CONTEXT",
-        "PATTERNS",
-        "HISTORY",
-        "SKILLS",
-        "ARCHITECTURE",
-        "BUGS",
-        "TESTING",
-        "CONFIG",
-        "GENERAL",
-      ]).optional().describe("Filter by category (optional)"),
+      factType: z.enum([
+        "preference",
+        "identity",
+        "knowledge",
+        "relationship",
+        "event",
+        "observation",
+        "custom",
+      ]).optional().describe("Filter by fact type (optional)"),
+      searchQuery: z.string().optional().describe("Search query to find relevant memories"),
       explanation: z.string().describe("Why memories are being listed"),
     }),
-    handler: async (ctx, { category, explanation }) => {
+    handler: async (ctx, { factType, searchQuery, explanation }) => {
       console.log(`[LIST_MEMORIES] ${explanation}`);
       
-      const userId = "default-user"; // Will be overridden by chat action context
+      const userId = "default-user";
+      const memorySpaceId = `user-${userId}`;
       
-      let memories;
-      if (category) {
-        memories = await ctx.runQuery((api as any).memories.byUserAndCategory, {
-          userId,
-          category,
+      let facts;
+      if (searchQuery) {
+        // Use search for semantic retrieval
+        facts = await ctx.runQuery((api as any).cortexFacts.search, {
+          memorySpaceId,
+          query: searchQuery,
+          factType,
+          limit: 20,
         });
       } else {
-        memories = await ctx.runQuery((api as any).memories.byUser, {
+        // List all facts
+        facts = await ctx.runQuery((api as any).cortexFacts.list, {
+          memorySpaceId,
+          factType,
           userId,
+          limit: 50,
         });
       }
 
       return {
         success: true,
-        memories: memories.map((m: any) => ({
-          id: m._id,
-          content: m.content,
-          category: m.category,
-          importance: m.importance,
-          createdAt: new Date(m.createdAt).toISOString(),
+        memories: (facts || []).map((f: any) => ({
+          id: f.factId,
+          content: f.fact,
+          factType: f.factType,
+          confidence: f.confidence,
+          tags: f.tags,
+          createdAt: new Date(f.createdAt).toISOString(),
         })),
-        count: memories.length,
+        count: (facts || []).length,
       };
     },
   }),
 
   removeMemory: createTool({
-    description: `Remove a previously stored memory that is no longer relevant or accurate.`,
+    description: `Remove a previously stored memory/fact that is no longer relevant or accurate.`,
     args: z.object({
-      memoryId: z.string().describe("ID of the memory to remove"),
+      factId: z.string().describe("ID of the fact/memory to remove (factId from listMemories)"),
       explanation: z.string().describe("Why this memory is being removed"),
     }),
-    handler: async (ctx, { memoryId, explanation }) => {
+    handler: async (ctx, { factId, explanation }) => {
       console.log(`[REMOVE_MEMORY] ${explanation}`);
       
+      const userId = "default-user";
+      const memorySpaceId = `user-${userId}`;
+      
       try {
-        await ctx.runMutation((api as any).memories.remove, {
-          memoryId: memoryId as any,
+        await ctx.runMutation((api as any).cortexFacts.deleteFact, {
+          memorySpaceId,
+          factId,
         });
         return {
           success: true,
@@ -1063,34 +1096,27 @@ Use this to remember:
   }),
 
   updateMemory: createTool({
-    description: `Update an existing memory with new or corrected information.`,
+    description: `Update an existing memory/fact with new or corrected information.`,
     args: z.object({
-      memoryId: z.string().describe("ID of the memory to update"),
+      factId: z.string().describe("ID of the fact/memory to update"),
       content: z.string().optional().describe("New content for the memory"),
-      category: z.enum([
-        "PREFERENCES",
-        "CONTEXT",
-        "PATTERNS",
-        "HISTORY",
-        "SKILLS",
-        "ARCHITECTURE",
-        "BUGS",
-        "TESTING",
-        "CONFIG",
-        "GENERAL",
-      ]).optional().describe("New category"),
-      importance: z.number().min(1).max(10).optional().describe("New importance score"),
+      confidence: z.number().min(0).max(100).optional().describe("New confidence/importance score"),
+      tags: z.array(z.string()).optional().describe("New tags"),
       explanation: z.string().describe("Why this memory is being updated"),
     }),
-    handler: async (ctx, { memoryId, content, category, importance, explanation }) => {
+    handler: async (ctx, { factId, content, confidence, tags, explanation }) => {
       console.log(`[UPDATE_MEMORY] ${explanation}`);
       
+      const userId = "default-user";
+      const memorySpaceId = `user-${userId}`;
+      
       try {
-        await ctx.runMutation((api as any).memories.update, {
-          memoryId: memoryId as any,
-          content,
-          category,
-          importance,
+        await ctx.runMutation((api as any).cortexFacts.update, {
+          memorySpaceId,
+          factId,
+          fact: content,
+          confidence,
+          tags,
         });
         return {
           success: true,
@@ -1102,6 +1128,73 @@ Use this to remember:
           error: "Memory not found or update failed",
         };
       }
+    },
+  }),
+
+  searchMemories: createTool({
+    description: `Search memories using semantic/keyword search. Better than listMemories for finding specific information.`,
+    args: z.object({
+      query: z.string().describe("Search query to find relevant memories"),
+      factType: z.enum([
+        "preference",
+        "identity",
+        "knowledge",
+        "relationship",
+        "event",
+        "observation",
+        "custom",
+      ]).optional().describe("Filter by fact type"),
+      limit: z.number().optional().describe("Max results to return (default 10)"),
+      explanation: z.string().describe("Why searching memories"),
+    }),
+    handler: async (ctx, { query, factType, limit, explanation }) => {
+      console.log(`[SEARCH_MEMORIES] ${explanation}`);
+      
+      const userId = "default-user";
+      const memorySpaceId = `user-${userId}`;
+      
+      // Search in both memories and facts
+      const [memories, facts] = await Promise.all([
+        ctx.runQuery((api as any).cortexMemories.search, {
+          memorySpaceId,
+          query,
+          limit: limit || 10,
+        }),
+        ctx.runQuery((api as any).cortexFacts.search, {
+          memorySpaceId,
+          query,
+          factType,
+          limit: limit || 10,
+        }),
+      ]);
+
+      // Combine and deduplicate results
+      const combined = [
+        ...(facts || []).map((f: any) => ({
+          id: f.factId,
+          content: f.fact,
+          type: "fact",
+          factType: f.factType,
+          confidence: f.confidence,
+          tags: f.tags,
+          createdAt: f.createdAt,
+        })),
+        ...(memories || []).map((m: any) => ({
+          id: m.memoryId,
+          content: m.content,
+          type: "memory",
+          factType: m.factCategory,
+          importance: m.importance,
+          tags: m.tags,
+          createdAt: m.createdAt,
+        })),
+      ];
+
+      return {
+        success: true,
+        results: combined.slice(0, limit || 10),
+        count: combined.length,
+      };
     },
   }),
 };

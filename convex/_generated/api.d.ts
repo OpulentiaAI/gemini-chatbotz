@@ -13,11 +13,13 @@ import type * as agent from "../agent.js";
 import type * as auth from "../auth.js";
 import type * as chat from "../chat.js";
 import type * as chatDb from "../chatDb.js";
+import type * as cortexFacts from "../cortexFacts.js";
+import type * as cortexMemories from "../cortexMemories.js";
+import type * as cortexMemorySpaces from "../cortexMemorySpaces.js";
 import type * as deepcrawl from "../deepcrawl.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as hyperbrowser from "../hyperbrowser.js";
-import type * as memories from "../memories.js";
 import type * as reservations from "../reservations.js";
 
 import type {
@@ -32,11 +34,13 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   chat: typeof chat;
   chatDb: typeof chatDb;
+  cortexFacts: typeof cortexFacts;
+  cortexMemories: typeof cortexMemories;
+  cortexMemorySpaces: typeof cortexMemorySpaces;
   deepcrawl: typeof deepcrawl;
   files: typeof files;
   http: typeof http;
   hyperbrowser: typeof hyperbrowser;
-  memories: typeof memories;
   reservations: typeof reservations;
 }>;
 
