@@ -78,9 +78,36 @@ export const listMessages = query({
         streamArgs: vStreamArgs,
     },
     handler: async (ctx, args) => {
-        const paginated = await listUIMessages(ctx, components.agent, args);
-        const streams = await syncStreams(ctx, components.agent, args);
-        return { ...paginated, streams };
+        // Validate threadId is a valid Convex ID format (alphanumeric, no dashes)
+        // UUID format like "511b1cdd-fc55-4b75-8ad1-ded6c39f7283" is invalid for agent threads
+        const isValidConvexId = /^[a-z0-9]+$/.test(args.threadId);
+        if (!isValidConvexId) {
+            // Return empty result for invalid thread IDs (legacy UUIDs from localStorage)
+            return {
+                page: [],
+                isDone: true,
+                continueCursor: null,
+                streams: {},
+            };
+        }
+
+        try {
+            const paginated = await listUIMessages(ctx, components.agent, args);
+            const streams = await syncStreams(ctx, components.agent, args);
+            return { ...paginated, streams };
+        } catch (error) {
+            // Handle case where thread doesn't exist in agent component
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            if (errorMessage.includes("ArgumentValidationError") || errorMessage.includes("not found")) {
+                return {
+                    page: [],
+                    isDone: true,
+                    continueCursor: null,
+                    streams: {},
+                };
+            }
+            throw error;
+        }
     },
 });
 

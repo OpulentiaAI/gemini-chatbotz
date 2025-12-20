@@ -108,3 +108,34 @@ export const ensureFreshJwks = internalAction({
     return { rotated: false, reason: "fresh", maxAgeDays };
   },
 });
+
+// One-time action to clear JWKS when secret changes (fixes decryption error)
+export const clearJwks = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    // Find all JWKS entries
+    const result = await ctx.runQuery(components.betterAuth.adapter.findMany, {
+      model: "jwks",
+      paginationOpts: { cursor: null, numItems: 100 },
+    });
+
+    // Delete each JWKS entry
+    for (const jwk of result.page || []) {
+      await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
+        input: {
+          model: "jwks" as const,
+          where: [{ field: "_id" as const, value: jwk._id, operator: "eq" as const }],
+        },
+      });
+    }
+
+    // Generate fresh keys with the new secret
+    const auth = createAuth(ctx);
+    await auth.api.rotateKeys();
+    return {
+      success: true,
+      deletedCount: (result.page || []).length,
+      message: "JWKS cleared and new keys generated",
+    };
+  },
+});
