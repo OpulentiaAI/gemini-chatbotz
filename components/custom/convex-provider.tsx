@@ -6,9 +6,9 @@ import { ReactNode } from "react";
 
 import { authClient } from "@/lib/auth-client";
 
-const convex = new ConvexReactClient("https://brilliant-ferret-250.convex.cloud", {
-  expectAuth: true,
-});
+const convexUrl =
+  process.env.NEXT_PUBLIC_CONVEX_URL || "https://brilliant-ferret-250.convex.cloud";
+const convex = new ConvexReactClient(convexUrl, { expectAuth: true });
 
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
   return (

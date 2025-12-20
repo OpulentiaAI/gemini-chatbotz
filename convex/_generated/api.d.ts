@@ -16,11 +16,14 @@ import type * as chatDb from "../chatDb.js";
 import type * as cortexFacts from "../cortexFacts.js";
 import type * as cortexMemories from "../cortexMemories.js";
 import type * as cortexMemorySpaces from "../cortexMemorySpaces.js";
+import type * as crons from "../crons.js";
 import type * as deepcrawl from "../deepcrawl.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as hyperbrowser from "../hyperbrowser.js";
+import type * as mcp from "../mcp.js";
 import type * as reservations from "../reservations.js";
+import type * as todos from "../todos.js";
 
 import type {
   ApiFromModules,
@@ -37,11 +40,14 @@ declare const fullApi: ApiFromModules<{
   cortexFacts: typeof cortexFacts;
   cortexMemories: typeof cortexMemories;
   cortexMemorySpaces: typeof cortexMemorySpaces;
+  crons: typeof crons;
   deepcrawl: typeof deepcrawl;
   files: typeof files;
   http: typeof http;
   hyperbrowser: typeof hyperbrowser;
+  mcp: typeof mcp;
   reservations: typeof reservations;
+  todos: typeof todos;
 }>;
 
 /**
@@ -3921,12 +3927,6 @@ export declare const components: {
               | null;
           }>;
         },
-        any
-      >;
-      migrationRemoveUserId: FunctionReference<
-        "mutation",
-        "internal",
-        { userId: string },
         any
       >;
       updateMany: FunctionReference<

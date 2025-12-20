@@ -17,7 +17,7 @@ export type OpenRouterModelId =
   | "anthropic/claude-3-opus"
   | "anthropic/claude-3-haiku"
   | "anthropic/claude-opus-4.5"
-  | "google/gemini-2.0-flash-exp"
+  | "google/gemini-3-flash-preview"
   | "google/gemini-pro-1.5"
   | "google/gemini-3-pro-preview"
   | "meta-llama/llama-3.1-70b-instruct"
@@ -166,13 +166,13 @@ export const OPENROUTER_MODELS: ModelDefinition[] = [
     capabilities: { vision: true, functionCalling: true, streaming: true },
   },
   {
-    id: "google/gemini-2.0-flash-exp",
-    name: "Gemini 2.0 Flash",
+    id: "google/gemini-3-flash-preview",
+    name: "Gemini 3 Flash",
     provider: "Google",
-    description: "Latest Gemini model, fast and capable",
-    contextLength: 1000000,
+    description: "High speed thinking model for agentic workflows, multi-turn chat, and coding assistance",
+    contextLength: 1048576,
     maxOutput: 8192,
-    pricing: { prompt: 0.0, completion: 0.0 },
+    pricing: { prompt: 0.0005, completion: 0.003 },
     capabilities: { vision: true, functionCalling: true, streaming: true },
   },
   {

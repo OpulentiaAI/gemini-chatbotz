@@ -54,6 +54,40 @@ export default defineSchema({
     .index("by_thread", ["threadId"]),
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // AI Agent Todo Management
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  todos: defineTable({
+    threadId: v.string(),
+    userId: v.string(),
+    content: v.string(),
+    status: v.union(
+      v.literal("PENDING"),
+      v.literal("IN_PROGRESS"),
+      v.literal("COMPLETED"),
+      v.literal("CANCELLED"),
+    ),
+    priority: v.optional(
+      v.union(
+        v.literal("LOW"),
+        v.literal("MEDIUM"),
+        v.literal("HIGH"),
+        v.literal("CRITICAL"),
+      )
+    ),
+    sequence: v.number(),
+    blockedBy: v.optional(v.array(v.id("todos"))),
+    estimatedMinutes: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_thread", ["threadId"])
+    .index("by_thread_sequence", ["threadId", "sequence"])
+    .index("by_thread_status", ["threadId", "status"])
+    .index("by_user", ["userId"])
+    .index("by_thread_priority", ["threadId", "priority"]),
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // CORTEX Layer 1a: Conversations (ACID, Immutable)
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   cortexConversations: defineTable({

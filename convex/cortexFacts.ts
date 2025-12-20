@@ -9,11 +9,34 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Constants & Utilities
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const RATE_LIMITS = {
+  FACTS_PER_MEMORY_SPACE: 500,
+  FACT_CONTENT_MAX_LENGTH: 2000,
+};
+
+/**
+ * Simple hash for deduplication (not cryptographic)
+ */
+function hashContent(content: string, factType: string, memorySpaceId: string): string {
+  const str = `${memorySpaceId}:${factType}:${content.toLowerCase().trim()}`;
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return hash.toString(36);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Mutations (Write Operations)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 /**
- * Store a new fact
+ * Store a new fact with deduplication and rate limiting
  */
 export const store = mutation({
   args: {
@@ -75,6 +98,50 @@ export const store = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    // Rate limiting: check content length
+    if (args.fact.length > RATE_LIMITS.FACT_CONTENT_MAX_LENGTH) {
+      return {
+        success: false,
+        error: `Fact content exceeds ${RATE_LIMITS.FACT_CONTENT_MAX_LENGTH} characters`,
+        deduplicated: false,
+      };
+    }
+
+    // Rate limiting: check facts count per memory space
+    const existingFacts = await ctx.db
+      .query("facts")
+      .withIndex("by_memorySpace", (q) => q.eq("memorySpaceId", args.memorySpaceId))
+      .collect();
+
+    if (existingFacts.length >= RATE_LIMITS.FACTS_PER_MEMORY_SPACE) {
+      return {
+        success: false,
+        error: `Memory space fact limit (${RATE_LIMITS.FACTS_PER_MEMORY_SPACE}) reached`,
+        deduplicated: false,
+      };
+    }
+
+    // Deduplication: check for existing fact with same content hash
+    const contentHash = hashContent(args.fact, args.factType, args.memorySpaceId);
+    
+    // Search for duplicate by checking recent facts with similar content
+    const potentialDuplicates = existingFacts.filter((f) => {
+      const existingHash = hashContent(f.fact, f.factType, f.memorySpaceId);
+      return existingHash === contentHash;
+    });
+
+    if (potentialDuplicates.length > 0) {
+      const existing = potentialDuplicates[0]!;
+      // Update timestamp instead of creating duplicate
+      await ctx.db.patch(existing._id, { updatedAt: Date.now() });
+      return {
+        ...existing,
+        success: true,
+        deduplicated: true,
+        message: "Fact already exists, updated timestamp",
+      };
+    }
+
     const now = Date.now();
     const factId = `fact-${now}-${Math.random().toString(36).substring(2, 11)}`;
 
@@ -107,7 +174,12 @@ export const store = mutation({
       updatedAt: now,
     });
 
-    return await ctx.db.get(_id);
+    const result = await ctx.db.get(_id);
+    return {
+      ...result,
+      success: true,
+      deduplicated: false,
+    };
   },
 });
 

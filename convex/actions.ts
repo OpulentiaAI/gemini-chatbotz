@@ -20,7 +20,7 @@ const google = createGoogleGenerativeAI({
 // Use Gemini 3 Pro Preview via OpenRouter for text/object generation
 const geminiFlash = openrouter("google/gemini-3-pro-preview");
 // For file/vision inputs - native Google SDK format routed through OpenRouter
-const geminiVision = google("google/gemini-2.0-flash-exp");
+const geminiVision = google("google/gemini-3-flash-preview");
 // Nano Banana Pro - Image generation model
 const nanoBananaPro = openrouter("google/gemini-3-pro-image-preview");
 

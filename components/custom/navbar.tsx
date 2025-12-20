@@ -10,6 +10,7 @@ import { authClient } from "@/lib/auth-client";
 import { History } from "./history";
 import { SlashIcon } from "./icons";
 import { ThemeToggle } from "./theme-toggle";
+import { MCPSettings } from "./mcp-settings";
 import { Button } from "../ui/button";
 import {
   DropdownMenu,
@@ -61,32 +62,35 @@ export const Navbar = () => {
       </div>
 
       {session ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              className="py-1.5 px-2 h-fit font-normal"
-              variant="secondary"
-              disabled={signingOut}
-            >
-              {session.user?.email}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem>
-              <ThemeToggle />
-            </DropdownMenuItem>
-            <DropdownMenuItem className="p-1 z-50">
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="w-full text-left px-1 py-0.5 text-red-500"
+        <div className="flex items-center gap-2">
+          <MCPSettings variant="compact" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                className="py-1.5 px-2 h-fit font-normal"
+                variant="secondary"
                 disabled={signingOut}
               >
-                {signingOut ? "Signing out..." : "Sign out"}
-              </button>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+                {session.user?.email}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>
+                <ThemeToggle />
+              </DropdownMenuItem>
+              <DropdownMenuItem className="p-1 z-50">
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="w-full text-left px-1 py-0.5 text-red-500"
+                  disabled={signingOut}
+                >
+                  {signingOut ? "Signing out..." : "Sign out"}
+                </button>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       ) : (
         <Button className="py-1.5 px-2 h-fit font-normal text-white" asChild>
           <Link href="/login">Login</Link>

@@ -18,6 +18,7 @@ EXA_API_KEY=your_exa_api_key
 BETTER_AUTH_SECRET=your_better_auth_secret   # e.g. openssl rand -base64 32
 SITE_URL=http://localhost:3000               # or your prod URL
 CONVEX_SITE_URL=https://your-deployment.convex.site
+JWKS_MAX_AGE_DAYS=30                          # set to 0 to disable rotation
 ```
 
 ## PDF & File Analysis

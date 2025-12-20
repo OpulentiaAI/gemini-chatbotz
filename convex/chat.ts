@@ -6,6 +6,7 @@ import { flightAgent, codeAgent, quickAgent, researchAgent, createAgentWithModel
 import { Agent } from "@convex-dev/agent";
 import { internal, api } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
+import { initBraintrust, traceMessage } from "../lib/braintrust";
 
 const modelValidator = v.optional(v.union(
   v.literal("openai/gpt-4o"),
@@ -16,7 +17,7 @@ const modelValidator = v.optional(v.union(
   v.literal("anthropic/claude-3-opus"),
   v.literal("anthropic/claude-3-haiku"),
   v.literal("anthropic/claude-opus-4.5"),
-  v.literal("google/gemini-2.0-flash-exp"),
+  v.literal("google/gemini-3-flash-preview"),
   v.literal("google/gemini-pro-1.5"),
   v.literal("google/gemini-3-pro-preview"),
   v.literal("meta-llama/llama-3.1-70b-instruct"),
@@ -106,7 +107,7 @@ export const createNewThread = action({
       userId: userId ?? "anonymous",
     });
     if (userId) {
-      await ctx.runMutation((internal as any).chatDb.saveUserThread, {
+      await ctx.runMutation(api.chatDb.saveUserThread, {
         threadId,
         userId,
       });
@@ -124,6 +125,9 @@ export const sendMessage = action({
     attachments: v.optional(v.array(fileAttachmentValidator)),
   },
   handler: async (ctx, { threadId, prompt, userId, modelId, attachments }) => {
+    // Initialize Braintrust (safe no-op if no API key)
+    initBraintrust();
+    
     const agent: Agent = modelId ? createAgentWithModel(modelId) : flightAgent;
     const { thread } = await agent.continueThread(ctx, { threadId });
     
@@ -131,11 +135,17 @@ export const sendMessage = action({
     const fileAnalysis = attachments ? await preAnalyzeFiles(ctx, attachments, prompt) : "";
     const fullPrompt = prompt + fileAnalysis;
     
-    const result = await thread.generateText(
-      { prompt: fullPrompt }
+    // Trace the generateText call with Braintrust
+    const result = await traceMessage(
+      "generateText",
+      threadId,
+      modelId,
+      fullPrompt,
+      async () => thread.generateText({ prompt: fullPrompt })
     );
+    
     if (userId) {
-      await ctx.runMutation((api as any).chatDb.updateThreadTitle, {
+      await ctx.runMutation(api.chatDb.updateThreadTitle, {
         threadId,
         title: prompt.slice(0, 100),
       });
@@ -158,6 +168,9 @@ export const streamMessage = action({
     attachments: v.optional(v.array(fileAttachmentValidator)),
   },
   handler: async (ctx, { threadId, prompt, userId, modelId, attachments }) => {
+    // Initialize Braintrust (safe no-op if no API key)
+    initBraintrust();
+    
     const agent: Agent = modelId ? createAgentWithModel(modelId) : flightAgent;
     const { thread } = await agent.continueThread(ctx, { threadId });
     
@@ -165,19 +178,56 @@ export const streamMessage = action({
     const fileAnalysis = attachments ? await preAnalyzeFiles(ctx, attachments, prompt) : "";
     const fullPrompt = prompt + fileAnalysis;
     
-    const result = await thread.streamText(
-      { prompt: fullPrompt },
-      { saveStreamDeltas: { throttleMs: 100 } }
-    );
-    if (userId) {
-      await ctx.runMutation((api as any).chatDb.updateThreadTitle, {
-        threadId,
-        title: prompt.slice(0, 100),
-      });
+    // Gemini models can have transient provider errors - add retry logic
+    const isGeminiModel = modelId?.startsWith("google/gemini");
+    const maxRetries = isGeminiModel ? 2 : 1;
+    let lastError: Error | null = null;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        // IMPORTANT: For streaming, we trace the operation but don't wrap the stream itself
+        // This ensures streaming is not blocked by Braintrust logging
+        const result = await traceMessage(
+          "streamText",
+          threadId,
+          modelId,
+          fullPrompt,
+          async () => thread.streamText(
+            { prompt: fullPrompt },
+            { saveStreamDeltas: { throttleMs: 100 } }
+          )
+        );
+        
+        if (userId) {
+          await ctx.runMutation(api.chatDb.updateThreadTitle, {
+            threadId,
+            title: prompt.slice(0, 100),
+          });
+        }
+        return {
+          text: await result.text,
+          attachments: attachments || [],
+        };
+      } catch (error) {
+        lastError = error as Error;
+        const errorMessage = (error as Error).message || "";
+        
+        // Only retry on transient provider errors
+        const isRetryable = errorMessage.includes("Provider returned error") ||
+                           errorMessage.includes("Connection lost") ||
+                           errorMessage.includes("timeout") ||
+                           errorMessage.includes("ECONNRESET");
+        
+        if (!isRetryable || attempt === maxRetries - 1) {
+          throw error;
+        }
+        
+        console.log(`[streamMessage] Retry ${attempt + 1}/${maxRetries} for ${modelId} after error: ${errorMessage}`);
+        // Brief delay before retry
+        await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+      }
     }
-    return {
-      text: await result.text,
-      attachments: attachments || [],
-    };
+    
+    throw lastError || new Error("Unknown error in streamMessage");
   },
 });

@@ -18,7 +18,7 @@ type OpenRouterModelId =
   | "anthropic/claude-3-opus"
   | "anthropic/claude-3-haiku"
   | "anthropic/claude-opus-4.5"
-  | "google/gemini-2.0-flash-exp"
+  | "google/gemini-3-flash-preview"
   | "google/gemini-pro-1.5"
   | "google/gemini-3-pro-preview"
   | "meta-llama/llama-3.1-70b-instruct"
@@ -164,8 +164,16 @@ You have powerful web research capabilities via Exa - the search engine built fo
 
 - **webSearch**: Ultra-fast semantic search optimized for LLMs with low latency.
   - Use type "auto" for best results, "neural" for embeddings-based search, "fast" for keyword search, "deep" for thorough research
-  - Supports filtering by category (company, news, research paper, github, etc.)
+  - Supports filtering by category (people, company, news, research paper, github, etc.)
   - Returns clean, parsed markdown content instantly
+
+- **searchPeople**: Find professionals, executives, founders on LinkedIn and professional sites.
+  - Specify role, company, location filters for targeted results
+  - Great for recruiting, networking, and business development research
+
+- **searchCompanies**: Find companies and organizations by industry, size, or description.
+  - Returns company pages, LinkedIn company profiles, and organization info
+  - Perfect for market research and competitive analysis
 
 - **exaGetContents**: Extract clean, parsed content from specific URLs.
   - Returns markdown-formatted text, highlights, and metadata
@@ -340,17 +348,32 @@ Make creative, distinctive choices that surprise and delight. Vary themes, fonts
 </frontend_aesthetics>
 `;
 
+// All valid Exa categories
+const exaCategories = [
+  "people",           // LinkedIn profiles, professional pages
+  "company",          // Company pages, startups, organizations
+  "research paper",   // Academic papers
+  "news",             // News articles
+  "pdf",              // PDF documents
+  "github",           // GitHub repositories
+  "tweet",            // Twitter/X posts
+  "personal site",    // Personal websites
+  "financial report", // Financial documents
+] as const;
+
 const exaSearch = createTool({
   description: "Ultra-fast AI-optimized web search with semantic understanding. Exa returns high-quality, relevant results optimized for LLMs with low latency.",
   args: z.object({
     query: z.string().describe("Search query - natural language works best"),
     numResults: z.number().optional().describe("Number of results to return (default 10, max 100)"),
     type: z.enum(["auto", "neural", "fast", "deep"]).optional().describe("Search type: auto (best), neural (embeddings), fast (keyword), deep (thorough)"),
-    category: z.enum(["company", "research paper", "news", "pdf", "github", "personal site", "linkedin profile", "financial report"]).optional().describe("Filter by content category"),
+    category: z.enum(exaCategories).optional().describe("Filter by content category: people, company, research paper, news, pdf, github, tweet, personal site, financial report"),
     useAutoprompt: z.boolean().optional().describe("Let Exa automatically enhance your query"),
     text: z.boolean().optional().describe("Include full text content (cleaned markdown)"),
+    includeDomains: z.array(z.string()).optional().describe("Only search these domains (e.g., ['linkedin.com', 'github.com'])"),
+    excludeDomains: z.array(z.string()).optional().describe("Exclude these domains from results"),
   }),
-  handler: async (_ctx, { query, numResults = 10, type = "auto", category, useAutoprompt, text = true }) => {
+  handler: async (_ctx, { query, numResults = 10, type = "auto", category, useAutoprompt, text = true, includeDomains, excludeDomains }) => {
     if (!process.env.EXA_API_KEY) {
       throw new Error("EXA_API_KEY not set");
     }
@@ -362,6 +385,8 @@ const exaSearch = createTool({
       contents: text ? { text: { maxCharacters: 3000 } } : undefined,
     };
     if (category) body.category = category;
+    if (includeDomains?.length) body.includeDomains = includeDomains;
+    if (excludeDomains?.length) body.excludeDomains = excludeDomains;
 
     const res = await fetch("https://api.exa.ai/search", {
       method: "POST",
@@ -376,6 +401,141 @@ const exaSearch = createTool({
       throw new Error(`Exa search failed: ${err}`);
     }
     return await res.json();
+  },
+});
+
+// Dedicated people search tool
+const searchPeople = createTool({
+  description: `Find professionals, executives, founders, and other people on LinkedIn and professional sites.
+Perfect for:
+- Recruiting and talent research
+- Finding decision makers at companies
+- Networking and business development
+- Researching industry experts and thought leaders`,
+  args: z.object({
+    query: z.string().describe("Search query - describe the person, role, or expertise you're looking for"),
+    role: z.string().optional().describe("Job title or role filter (e.g., 'VP of Engineering', 'CEO')"),
+    company: z.string().optional().describe("Company name to filter by"),
+    location: z.string().optional().describe("Location filter (e.g., 'San Francisco', 'New York')"),
+    numResults: z.number().optional().describe("Number of results (default 10, max 100)"),
+  }),
+  handler: async (_ctx, { query, role, company, location, numResults = 10 }) => {
+    if (!process.env.EXA_API_KEY) {
+      throw new Error("EXA_API_KEY not set");
+    }
+    
+    // Build enhanced query with filters
+    let enhancedQuery = query;
+    if (role && !query.toLowerCase().includes(role.toLowerCase())) {
+      enhancedQuery = `${role} ${enhancedQuery}`;
+    }
+    if (company && !query.toLowerCase().includes(company.toLowerCase())) {
+      enhancedQuery = `${enhancedQuery} at ${company}`;
+    }
+    if (location && !query.toLowerCase().includes(location.toLowerCase())) {
+      enhancedQuery = `${enhancedQuery} in ${location}`;
+    }
+    
+    console.log(`[Exa People Search] Query: "${enhancedQuery}"`);
+    
+    const body: Record<string, unknown> = {
+      query: enhancedQuery,
+      numResults,
+      type: "neural",
+      category: "people",
+      contents: { text: { maxCharacters: 2000 } },
+    };
+
+    const res = await fetch("https://api.exa.ai/search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.EXA_API_KEY,
+      },
+      body: JSON.stringify(body),
+    });
+    
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Exa people search failed: ${err}`);
+    }
+    
+    const data = await res.json();
+    console.log(`[Exa People Search] Found ${data.results?.length || 0} results`);
+    
+    // Format results for cleaner output
+    return {
+      searchType: "neural",
+      results: (data.results || []).map((r: any) => ({
+        title: r.title,
+        url: r.url,
+        author: r.author,
+        snippet: r.text?.slice(0, 500),
+        publishedDate: r.publishedDate,
+      })),
+    };
+  },
+});
+
+// Dedicated company search tool
+const searchCompanies = createTool({
+  description: `Find companies, startups, and organizations by industry, description, or criteria.
+Perfect for:
+- Market research and competitive analysis
+- Finding potential partners or acquisition targets
+- Industry landscape mapping
+- Startup and investor research`,
+  args: z.object({
+    query: z.string().describe("Search query - describe the company type, industry, or criteria"),
+    industry: z.string().optional().describe("Industry filter (e.g., 'fintech', 'healthcare', 'AI')"),
+    numResults: z.number().optional().describe("Number of results (default 10, max 100)"),
+  }),
+  handler: async (_ctx, { query, industry, numResults = 10 }) => {
+    if (!process.env.EXA_API_KEY) {
+      throw new Error("EXA_API_KEY not set");
+    }
+    
+    // Build enhanced query
+    let enhancedQuery = query;
+    if (industry && !query.toLowerCase().includes(industry.toLowerCase())) {
+      enhancedQuery = `${enhancedQuery} ${industry} company`;
+    } else if (!query.toLowerCase().includes('company') && !query.toLowerCase().includes('startup')) {
+      enhancedQuery = `${enhancedQuery} company`;
+    }
+    
+    console.log(`[Exa Company Search] Query: "${enhancedQuery}"`);
+    
+    const body: Record<string, unknown> = {
+      query: enhancedQuery,
+      numResults,
+      type: "neural",
+      category: "company",
+      contents: { text: { maxCharacters: 2000 } },
+    };
+
+    const res = await fetch("https://api.exa.ai/search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.EXA_API_KEY,
+      },
+      body: JSON.stringify(body),
+    });
+    
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Exa company search failed: ${err}`);
+    }
+    
+    const data = await res.json();
+    
+    return {
+      results: (data.results || []).map((r: any) => ({
+        title: r.title,
+        url: r.url,
+        snippet: r.text?.slice(0, 500),
+      })),
+    };
   },
 });
 
@@ -415,7 +575,7 @@ const exaFindSimilar = createTool({
   args: z.object({
     url: z.string().describe("URL to find similar pages to"),
     numResults: z.number().optional().describe("Number of similar results (default 10)"),
-    category: z.enum(["company", "research paper", "news", "pdf", "github", "personal site", "linkedin profile", "financial report"]).optional().describe("Filter by category"),
+    category: z.enum(exaCategories).optional().describe("Filter by category: people, company, research paper, news, pdf, github, tweet, personal site, financial report"),
     text: z.boolean().optional().describe("Include full text content"),
   }),
   handler: async (_ctx, { url, numResults = 10, category, text = true }) => {
@@ -655,6 +815,8 @@ const baseTools = {
     },
   }),
   webSearch: exaSearch,
+  searchPeople,
+  searchCompanies,
   exaGetContents,
   exaFindSimilar,
   exaAnswer,
@@ -1197,15 +1359,189 @@ Use this to remember:
       };
     },
   }),
+
+  // ==========================================================================
+  // Todo Management (AI Agent Task Tracking)
+  // ==========================================================================
+  todoWrite: createTool({
+    description: `Create and manage a structured task list during coding sessions.
+Use this to track progress on complex multi-step tasks.
+
+CONSTRAINTS:
+- Maximum 100 todos per thread
+- Todo content max 500 characters
+- Only ONE todo should be in_progress at a time
+- Blocked todos cannot be started until blockers complete
+
+STATUS TRANSITIONS:
+- pending → in_progress, cancelled
+- in_progress → completed, pending, cancelled
+- completed → pending (reopen)
+- cancelled → pending (revive)
+
+PRIORITY LEVELS:
+- CRITICAL: Blocking other work, immediate attention
+- HIGH: Important, should be done soon
+- MEDIUM: Normal priority (default)
+- LOW: Nice to have, do when time permits`,
+    args: z.object({
+      merge: z.boolean().optional().default(false).describe("If true, merge with existing todos; if false, replace all"),
+      todos: z.array(z.object({
+        id: z.string().describe("Unique ID for this todo item"),
+        content: z.string().describe("Todo content (max 500 chars)"),
+        status: z.enum(["pending", "in_progress", "completed", "cancelled"]).describe("Current status"),
+        priority: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]).optional().describe("Priority level"),
+        estimatedMinutes: z.number().optional().describe("Estimated time in minutes"),
+      })).describe("List of todos to create/update"),
+      explanation: z.string().describe("Why these todos are being set"),
+    }),
+    handler: async (ctx, { merge, todos, explanation }) => {
+      console.log(`[TODO_WRITE] ${explanation}`);
+      
+      const userId = "default-user";
+      const threadId = `user-${userId}-todos`;
+      
+      // Convert status to uppercase for Convex
+      const toConvexStatus = (s: string) => s.toUpperCase().replace("_", "_") as "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+      
+      if (!merge) {
+        // Clear existing todos first
+        await ctx.runMutation((api as any).todos.removeAllByThread, { threadId });
+      }
+      
+      const results: Array<{ action: string; id: string; content: string; status: string }> = [];
+      
+      for (let i = 0; i < todos.length; i++) {
+        const todo = todos[i];
+        if (!todo) continue;
+        
+        const result = await ctx.runMutation((api as any).todos.create, {
+          threadId,
+          userId,
+          content: todo.content,
+          status: toConvexStatus(todo.status),
+          priority: todo.priority,
+          sequence: i,
+          estimatedMinutes: todo.estimatedMinutes,
+        });
+        
+        if (result.success) {
+          results.push({
+            action: "created",
+            id: todo.id,
+            content: todo.content,
+            status: todo.status,
+          });
+        } else {
+          results.push({
+            action: "failed",
+            id: todo.id,
+            content: todo.content,
+            status: todo.status,
+          });
+        }
+      }
+      
+      // Get stats
+      const stats = await ctx.runQuery((api as any).todos.stats, { threadId });
+      
+      return {
+        success: true,
+        message: `${merge ? "Merged" : "Replaced"} ${results.length} todos`,
+        todos: results,
+        stats,
+      };
+    },
+  }),
+
+  todoRead: createTool({
+    description: `Read the current todo list for this session. Use at the start of tasks to see what's already tracked.`,
+    args: z.object({
+      status: z.enum(["pending", "in_progress", "completed", "cancelled"]).optional().describe("Filter by status"),
+      explanation: z.string().describe("Why todos are being read"),
+    }),
+    handler: async (ctx, { status, explanation }) => {
+      console.log(`[TODO_READ] ${explanation}`);
+      
+      const userId = "default-user";
+      const threadId = `user-${userId}-todos`;
+      
+      let todos;
+      if (status) {
+        const convexStatus = status.toUpperCase().replace("_", "_") as "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+        todos = await ctx.runQuery((api as any).todos.byThreadAndStatus, { threadId, status: convexStatus });
+      } else {
+        todos = await ctx.runQuery((api as any).todos.byThread, { threadId });
+      }
+      
+      const stats = await ctx.runQuery((api as any).todos.stats, { threadId });
+      
+      return {
+        success: true,
+        todos: (todos || []).map((t: any) => ({
+          id: t._id,
+          content: t.content,
+          status: t.status.toLowerCase(),
+          priority: t.priority,
+          sequence: t.sequence,
+          estimatedMinutes: t.estimatedMinutes,
+          completedAt: t.completedAt,
+          createdAt: t.createdAt,
+        })),
+        stats,
+      };
+    },
+  }),
+
+  todoUpdate: createTool({
+    description: `Update a specific todo's status or content. Use when completing tasks or changing priorities.`,
+    args: z.object({
+      todoId: z.string().describe("ID of the todo to update (from todoRead)"),
+      status: z.enum(["pending", "in_progress", "completed", "cancelled"]).optional().describe("New status"),
+      content: z.string().optional().describe("New content"),
+      priority: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]).optional().describe("New priority"),
+      explanation: z.string().describe("Why this todo is being updated"),
+    }),
+    handler: async (ctx, { todoId, status, content, priority, explanation }) => {
+      console.log(`[TODO_UPDATE] ${explanation}`);
+      
+      const updates: any = {};
+      if (status) updates.status = status.toUpperCase().replace("_", "_");
+      if (content) updates.content = content;
+      if (priority) updates.priority = priority;
+      
+      const result = await ctx.runMutation((api as any).todos.update, {
+        todoId: todoId as any,
+        ...updates,
+      });
+      
+      return result;
+    },
+  }),
 };
 
 export function createAgentWithModel(modelId: OpenRouterModelId) {
+  // Gemini 3 Flash has issues with multi-step tool calling via OpenRouter
+  // Reduce maxSteps and add specific handling to prevent timeouts
+  const isGeminiFlash = modelId === "google/gemini-3-flash-preview";
+  const isGeminiModel = modelId.startsWith("google/gemini");
+  
   return new Agent(components.agent, {
     name: `Agent (${modelId})`,
     languageModel: openrouter(modelId),
-    instructions: baseInstructions,
+    instructions: isGeminiFlash 
+      ? baseInstructions + `\n\n<model_constraints>
+You are running on Gemini 3 Flash which has limited multi-step tool calling.
+- Prefer completing tasks in fewer tool calls when possible
+- If a tool call fails, summarize what you learned and ask the user how to proceed
+- Avoid chaining more than 2-3 tool calls in sequence
+</model_constraints>`
+      : baseInstructions,
     tools: baseTools,
-    maxSteps: 10,
+    // Gemini Flash: limit to 3 steps to prevent timeout
+    // Other Gemini: limit to 5 steps  
+    // Others: 10 steps
+    maxSteps: isGeminiFlash ? 3 : (isGeminiModel ? 5 : 10),
   });
 }
 

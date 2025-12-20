@@ -76,34 +76,24 @@ export function Chat({
     [session?.user?.id, userId]
   );
 
-  // Check if the page id corresponds to an existing thread
+  // Check if the page id corresponds to an existing thread in userThreads (for history tracking)
   const existingThread = useQuery(api.chatDb.getThreadById, id ? { threadId: id } : "skip");
   
-  // Initialize threadId - only use the page id if it's a valid existing thread
-  const [threadId, setThreadId] = useState<string | null>(null);
-  const [threadChecked, setThreadChecked] = useState(false);
+  // Track the active threadId for this chat session
+  // If we have an id from URL, use it directly - messages are stored in agent's internal tables
+  // The userThreads table is for history sidebar, not for message storage
+  const [threadId, setThreadId] = useState<string | null>(id || null);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedModel, setSelectedModel] = useState<OpenRouterModelId>(DEFAULT_MODEL);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Reset state when navigating to a different chat
+  // Sync threadId with URL id when navigating between chats
   useEffect(() => {
-    setThreadId(null);
-    setThreadChecked(false);
+    // If id exists, use it as threadId (messages are in agent's internal storage)
+    // If id is undefined (home page), reset to null for new chat
+    setThreadId(id || null);
   }, [id]);
-
-  // Once the thread check completes, set the threadId if the thread exists
-  useEffect(() => {
-    if (existingThread !== undefined && !threadChecked) {
-      if (existingThread) {
-        // Thread exists in our database, use it
-        setThreadId(id);
-      }
-      // Mark as checked so we don't re-run this
-      setThreadChecked(true);
-    }
-  }, [existingThread, id, threadChecked]);
 
   const createThread = useAction(api.chat.createNewThread);
   // Use streamMessage for realtime streaming with Convex
@@ -347,6 +337,7 @@ export function Chat({
           placeholder={isUploading ? "Uploading files..." : "Ask about flights, weather, code, or upload a PDF..."}
           selectedModel={selectedModel}
           onModelChange={handleModelChange}
+          isCompact={isArtifactVisible}
         />
       </div>
     </div>

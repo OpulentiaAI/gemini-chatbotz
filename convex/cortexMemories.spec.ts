@@ -67,13 +67,14 @@ describe("Cortex Memory System Integration Tests", () => {
       });
 
       expect(fact).toBeDefined();
-      expect(fact?.factId).toBeDefined();
-      expect(fact?.fact).toBe("User prefers dark mode interface");
-      expect(fact?.factType).toBe("preference");
-      expect(fact?.confidence).toBe(90);
-      expect(fact?.version).toBe(1);
+      expect(fact?.success).toBe(true);
+      expect((fact as any)?.factId).toBeDefined();
+      expect((fact as any)?.fact).toBe("User prefers dark mode interface");
+      expect((fact as any)?.factType).toBe("preference");
+      expect((fact as any)?.confidence).toBe(90);
+      expect((fact as any)?.version).toBe(1);
 
-      storedFactId = fact!.factId;
+      storedFactId = (fact as any)!.factId;
     });
 
     test("should get fact by ID", async () => {
@@ -229,7 +230,7 @@ describe("Cortex Memory System Integration Tests", () => {
         sourceType: "conversation",
         tags: ["name", "identity"],
       });
-      expect(identityFact?.factId).toBeDefined();
+      expect((identityFact as any)?.factId).toBeDefined();
 
       // 3. Store preference fact
       const prefFact = await client.mutation(api.cortexFacts.store, {
@@ -241,7 +242,7 @@ describe("Cortex Memory System Integration Tests", () => {
         sourceType: "conversation",
         tags: ["communication", "preference"],
       });
-      expect(prefFact?.factId).toBeDefined();
+      expect((prefFact as any)?.factId).toBeDefined();
 
       // 4. Store related memory
       await client.mutation(api.cortexMemories.store, {
@@ -271,7 +272,7 @@ describe("Cortex Memory System Integration Tests", () => {
       // 7. Update identity
       const updatedFact = await client.mutation(api.cortexFacts.update, {
         memorySpaceId: workflowSpaceId,
-        factId: identityFact!.factId,
+        factId: (identityFact as any)!.factId,
         fact: "User's full name is Alice Johnson",
         confidence: 100,
       });

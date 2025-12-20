@@ -50,6 +50,7 @@ export function AuthForm({
           name="password"
           className="bg-muted text-md md:text-sm border-none"
           type="password"
+          autoComplete="current-password"
           required
         />
       </div>

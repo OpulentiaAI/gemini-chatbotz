@@ -10,7 +10,9 @@ import {
   Lightbulb,
   Loader2,
   MousePointer2,
+  Paperclip,
   Plug,
+  Send,
   Settings,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +26,7 @@ import {
 import { cn } from "@/lib/utils";
 import { OPENROUTER_MODELS, type OpenRouterModelId, type ModelDefinition } from "@/lib/ai/openrouter";
 import { useArtifact } from "@/hooks/use-artifact";
+import { MCPSettings } from "@/components/custom/mcp-settings";
 
 type PromptInputProps = {
   onSubmit: (value: string, attachments?: File[], modelId?: OpenRouterModelId) => void;
@@ -34,6 +37,7 @@ type PromptInputProps = {
   className?: string;
   selectedModel?: OpenRouterModelId;
   onModelChange?: (modelId: OpenRouterModelId) => void;
+  isCompact?: boolean;
 };
 
 type RichTextEditorProps = {
@@ -43,6 +47,7 @@ type RichTextEditorProps = {
   onSubmit: (message?: string, attachments?: File[]) => void;
   selectedModel?: OpenRouterModelId;
   onSelectModel?: (model: OpenRouterModelId) => void;
+  isCompact?: boolean;
   isDisabled?: boolean;
   isPending?: boolean;
   isStreaming?: boolean;
@@ -65,22 +70,26 @@ function getModelsByProvider(): { provider: string; models: ModelDefinition[] }[
   }));
 }
 
-function SparkleIcon({ className }: { className?: string }) {
+function GridIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-      <title>Sparkle</title>
-      <path d="M12 2L13.09 8.26L18 6L15.74 10.91L22 12L15.74 13.09L18 18L13.09 15.74L12 22L10.91 15.74L6 18L8.26 13.09L2 12L8.26 10.91L6 6L10.91 8.26L12 2Z" />
+    <svg viewBox="0 0 16 16" fill="currentColor" className={className} aria-hidden="true">
+      <title>Models</title>
+      <rect x="1" y="1" width="6" height="6" rx="1" />
+      <rect x="9" y="1" width="6" height="6" rx="1" />
+      <rect x="1" y="9" width="6" height="6" rx="1" />
+      <rect x="9" y="9" width="6" height="6" rx="1" />
     </svg>
   );
 }
 
 function RichTextEditor({
-  placeholder = "Plan, @ for context, ...",
+  placeholder = "Ask a follow-up question or construct a Devin prompt",
   value,
   onChange,
   onSubmit,
   selectedModel,
   onSelectModel,
+  isCompact = false,
   isDisabled = false,
   isPending = false,
   isStreaming = false,
@@ -210,16 +219,26 @@ function RichTextEditor({
     }
   }, []);
 
-  const pillButtonClass =
-    "inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-accent focus:outline-none";
+  const modelButtonClass =
+    "inline-flex min-w-0 items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50";
+  const optionsButtonClass =
+    "inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted/80 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50";
+  const iconButtonClass =
+    "inline-flex h-8 w-8 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus:outline-none disabled:opacity-50";
+  const showExtraIcons = !isCompact;
+  const modelLabelClass = cn(
+    "max-w-[160px] truncate sm:max-w-[220px]",
+    isCompact && "max-w-[120px] sm:max-w-[160px]"
+  );
+  const optionsLabelClass = cn("hidden sm:inline", isCompact && "sm:hidden");
 
   return (
     <div className="mx-auto flex w-full flex-col px-4 lg:max-w-[600px] xl:px-0">
       <form className="flex w-full flex-col" onSubmit={handleSubmit}>
         <div
           className={cn(
-            "rounded-2xl border border-border bg-background transition-all shadow-sm",
-            isFocused && "ring-2 ring-ring",
+            "rounded-xl border border-border bg-card transition-all",
+            isFocused && "border-ring",
             isDisabled && "opacity-60"
           )}
         >
@@ -236,9 +255,9 @@ function RichTextEditor({
               className="absolute -m-px h-px w-px overflow-hidden whitespace-nowrap border-0 p-0 [clip:rect(0,0,0,0)]"
             />
             <div className="flex flex-col">
-              <div className="relative min-h-[44px] w-full px-4 py-3">
+              <div className="relative min-h-[48px] w-full px-4 py-4">
                 {isEmpty && (
-                  <span className="pointer-events-none absolute left-4 top-3 text-[15px] text-muted-foreground">
+                  <span className="pointer-events-none absolute left-4 top-4 text-[15px] text-muted-foreground">
                     {placeholder}
                   </span>
                 )}
@@ -250,7 +269,7 @@ function RichTextEditor({
                   aria-label="Message input"
                   title="Type your message here"
                   translate="no"
-                  className="relative min-h-[20px] whitespace-pre-wrap break-words text-[15px] text-foreground outline-none"
+                  className="relative min-h-[48px] whitespace-pre-wrap break-words text-[15px] text-foreground outline-none"
                   onInput={handleInput}
                   onKeyDown={handleKeyDown}
                   onFocus={() => setIsFocused(true)}
@@ -278,19 +297,31 @@ function RichTextEditor({
               )}
 
               <div className="flex items-center justify-between gap-2 px-3 pb-2.5">
-                <div className="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
+                <div className={cn("flex min-w-0 flex-1 items-center gap-2", isCompact && "gap-1.5")}>
+                  <button
+                    type="button"
+                    onClick={handleImageClick}
+                    title="Attach"
+                    aria-label="Attach"
+                    disabled={isDisabled}
+                    className={iconButtonClass}
+                  >
+                    <Paperclip className="h-[18px] w-[18px]" />
+                  </button>
+
                   {/* Model Selector */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button type="button" className={pillButtonClass} disabled={isDisabled}>
-                        <SparkleIcon className="h-4 w-4 shrink-0" />
-                        <span className="max-w-[80px] truncate sm:max-w-[150px]">
-                          {currentModel?.name || "Select model"}
-                        </span>
-                        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <button type="button" className={modelButtonClass} disabled={isDisabled}>
+                        <GridIcon className="h-4 w-4 shrink-0" />
+                        <span className={modelLabelClass}>{currentModel?.name || "Select model"}</span>
+                        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-primary-foreground/70" />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-56 max-h-80 overflow-y-auto">
+                    <DropdownMenuContent
+                      align="start"
+                      className="w-56 max-h-80 overflow-y-auto bg-popover text-popover-foreground border-border"
+                    >
                       {modelsByProvider.map((group, idx) => (
                         <div key={group.provider}>
                           <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
@@ -301,14 +332,16 @@ function RichTextEditor({
                               key={model.id}
                               onClick={() => onSelectModel?.(model.id)}
                               className={cn(
-                                "pl-4",
-                                selectedModel === model.id && "bg-accent"
+                                "pl-4 text-muted-foreground focus:bg-accent focus:text-foreground",
+                                selectedModel === model.id && "bg-accent text-foreground"
                               )}
                             >
                               <span className="truncate">{model.name}</span>
                             </DropdownMenuItem>
                           ))}
-                          {idx < modelsByProvider.length - 1 && <DropdownMenuSeparator />}
+                          {idx < modelsByProvider.length - 1 && (
+                            <DropdownMenuSeparator className="bg-border" />
+                          )}
                         </div>
                       ))}
                     </DropdownMenuContent>
@@ -317,28 +350,46 @@ function RichTextEditor({
                   {/* Options Dropdown */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button type="button" className={pillButtonClass} disabled={isDisabled}>
+                      <button type="button" className={optionsButtonClass} disabled={isDisabled}>
                         <Settings className="h-4 w-4 shrink-0" />
-                        <span className="hidden sm:inline">Options</span>
+                        <span className={optionsLabelClass}>Options</span>
                         <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-52">
-                      <DropdownMenuItem>
+                    <DropdownMenuContent
+                      align="start"
+                      className="w-52 bg-popover text-popover-foreground border-border"
+                    >
+                      <DropdownMenuItem className="text-muted-foreground focus:bg-accent focus:text-foreground">
                         <Settings className="mr-2 h-4 w-4" />
                         Settings
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Plug className="mr-2 h-4 w-4" />
-                        MCP Connections
+                      <MCPSettings
+                        variant="compact"
+                        trigger={
+                          <DropdownMenuItem
+                            className="text-muted-foreground focus:bg-accent focus:text-foreground"
+                            disabled={isDisabled}
+                          >
+                            <Plug className="mr-2 h-4 w-4" />
+                            MCP Connections
+                          </DropdownMenuItem>
+                        }
+                      />
+                      <DropdownMenuSeparator className="bg-border" />
+                      <DropdownMenuItem
+                        onClick={handleCursorClick}
+                        className="text-muted-foreground focus:bg-accent focus:text-foreground"
+                      >
+                        <MousePointer2 className="mr-2 h-4 w-4" />
+                        New Code
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={(e) => {
                           e.preventDefault();
                           setReasoningEnabled(!reasoningEnabled);
                         }}
-                        className="flex items-center justify-between"
+                        className="flex items-center justify-between text-muted-foreground focus:bg-accent focus:text-foreground"
                       >
                         <div className="flex items-center">
                           <Lightbulb className="mr-2 h-4 w-4" />
@@ -362,44 +413,46 @@ function RichTextEditor({
                   </DropdownMenu>
                 </div>
 
-                <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
-                  {/* Cursor/Code Button - Opens Code Artifact */}
+                <div className={cn("flex shrink-0 items-center gap-1", isCompact && "gap-0.5")}>
+                  <button
+                    type="submit"
+                    title={isStreaming ? "Stop" : "Send"}
+                    aria-label={isStreaming ? "Stop" : "Send"}
+                    disabled={isDisabled || (!isStreaming && isEmpty)}
+                    className={cn(iconButtonClass, !showExtraIcons && "hidden")}
+                  >
+                    <Send className="h-[18px] w-[18px]" />
+                  </button>
                   <button
                     type="button"
                     onClick={handleCursorClick}
                     title="New Code"
                     aria-label="New Code"
                     disabled={isDisabled}
-                    className="hidden h-8 w-8 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus:outline-none disabled:opacity-50 sm:inline-flex"
+                    className={cn(iconButtonClass, "hidden sm:inline-flex")}
                   >
                     <MousePointer2 className="h-[18px] w-[18px]" />
                   </button>
-
-                  {/* Document Button - Opens Document Artifact */}
                   <button
                     type="button"
                     onClick={handleDocumentClick}
                     title="New Document"
                     aria-label="New Document"
                     disabled={isDisabled}
-                    className="hidden h-8 w-8 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus:outline-none disabled:opacity-50 sm:inline-flex"
+                    className={cn(iconButtonClass, !showExtraIcons && "hidden")}
                   >
                     <FileText className="h-[18px] w-[18px]" />
                   </button>
-
-                  {/* Camera/Image Button */}
                   <button
                     type="button"
                     onClick={handleImageClick}
-                    title="Attach Image"
-                    aria-label="Attach Image"
+                    title="Camera"
+                    aria-label="Camera"
                     disabled={isDisabled}
-                    className="inline-flex h-8 w-8 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus:outline-none disabled:opacity-50"
+                    className={cn(iconButtonClass, !showExtraIcons && "hidden")}
                   >
                     <Camera className="h-[18px] w-[18px]" />
                   </button>
-
-                  {/* Submit Button */}
                   <button
                     type="submit"
                     disabled={isDisabled || (!isStreaming && isEmpty)}
@@ -411,7 +464,7 @@ function RichTextEditor({
                         ? "bg-muted text-muted-foreground"
                         : isStreaming
                           ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          : "bg-primary text-primary-foreground hover:bg-primary/90"
+                          : "bg-foreground text-background hover:bg-foreground/90"
                     )}
                   >
                     {isPending ? (
@@ -437,10 +490,11 @@ export const PromptInput = ({
   onStop,
   isLoading = false,
   isStreaming = false,
-  placeholder = "Plan, @ for context, ...",
+  placeholder = "Ask a follow-up question or construct a Devin prompt",
   className = "",
   selectedModel = "anthropic/claude-3.5-sonnet",
   onModelChange,
+  isCompact = false,
 }: PromptInputProps) => {
   const [value, setValue] = useState("");
 
@@ -471,6 +525,7 @@ export const PromptInput = ({
         onSubmit={handleSubmit}
         selectedModel={selectedModel}
         onSelectModel={handleSelectModel}
+        isCompact={isCompact}
         isDisabled={isLoading}
         isPending={isLoading}
         isStreaming={isStreaming}

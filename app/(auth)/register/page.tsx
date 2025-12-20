@@ -7,12 +7,14 @@ import { toast } from "sonner";
 
 import { AuthForm } from "@/components/custom/auth-form";
 import { SubmitButton } from "@/components/custom/submit-button";
+import { authClient, ensureConvexToken } from "@/lib/auth-client";
 
 export default function Page() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const { refetch } = authClient.useSession();
 
   const handleSubmit = async (formData: FormData) => {
     const emailValue = (formData.get("email") as string)?.trim();
@@ -30,6 +32,7 @@ export default function Page() {
       const res = await fetch("/api/auth/sign-up/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           name,
           email: emailValue,
@@ -45,6 +48,8 @@ export default function Page() {
         throw new Error(message);
       }
 
+      await refetch();
+      await ensureConvexToken();
       toast.success("Account created successfully");
       router.refresh();
       router.push("/");
