@@ -28,6 +28,10 @@ export default function Page() {
 
     setIsLoading(true);
     try {
+      const callbackURL =
+        process.env.NODE_ENV === "production" && typeof window !== "undefined"
+          ? window.location.origin
+          : undefined;
       const name = emailValue.split("@")[0] || "User";
       const res = await fetch("/api/auth/sign-up/email", {
         method: "POST",
@@ -38,7 +42,7 @@ export default function Page() {
           email: emailValue,
           password,
           rememberMe: true,
-          callbackURL: typeof window !== "undefined" ? window.location.origin : undefined,
+          callbackURL,
         }),
       });
 

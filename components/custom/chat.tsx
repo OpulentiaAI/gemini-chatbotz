@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useUIMessages } from "@convex-dev/agent/react";
+import { useSafeUIMessages } from "@/hooks/use-safe-ui-messages";
 import { Message as PreviewMessage } from "@/components/custom/message";
 import {
   Conversation,
@@ -161,7 +161,8 @@ export function Chat({
     []
   );
 
-  const { results: messages, status } = useUIMessages(
+  // Use safe wrapper that handles undefined paginated results
+  const { results: messages, status } = useSafeUIMessages(
     api.chatDb.listMessages,
     threadId ? { threadId } : "skip",
     { initialNumItems: 50, stream: true }

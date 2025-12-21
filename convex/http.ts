@@ -9,7 +9,7 @@ const http = httpRouter();
 // Register Better Auth HTTP routes with CORS enabled
 authComponent.registerRoutes(http, createAuth, {
   cors: {
-    allowedOrigins: ["https://chat.opulentia.ai", "https://worldeater.im", "http://localhost:3000"],
+    allowedOrigins: ["https://chat.opulentia.ai", "https://worldeater.im", "http://localhost:3000", "http://localhost:3002"],
     allowedHeaders: ["Content-Type", "Authorization"],
     exposedHeaders: [],
   },

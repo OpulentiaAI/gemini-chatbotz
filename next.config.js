@@ -1,3 +1,5 @@
+const path = require('path');
+
 /** @type {import('next').NextConfig} */
 module.exports = {
   serverExternalPackages: [],
@@ -10,5 +12,9 @@ module.exports = {
   },
   // Explicit build id to avoid generateBuildId undefined issues
   generateBuildId: async () => `build-${Date.now()}`,
+  // Fix Turbopack root directory detection for workspaces with multiple lockfiles
+  turbopack: {
+    root: path.resolve(__dirname),
+  },
 };
 

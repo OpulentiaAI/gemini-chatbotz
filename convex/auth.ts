@@ -7,7 +7,8 @@ import { betterAuth } from "better-auth";
 import authConfig from "./auth.config";
 
 // SITE_URL must be set in Convex dashboard for Better Auth to work
-const siteUrl = process.env.SITE_URL || "http://localhost:3000";
+const siteUrl =
+  process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 if (!process.env.BETTER_AUTH_SECRET && process.env.AUTH_SECRET) {
   process.env.BETTER_AUTH_SECRET = process.env.AUTH_SECRET;
@@ -29,16 +30,26 @@ const getJwksMaxAgeDays = () => {
 };
 
 export const createAuth = (ctx: GenericCtx<DataModel>) => {
+  const trustedOrigins = new Set<string>([
+    "https://chat.opulentia.ai",
+    "https://worldeater.im",
+    "http://localhost:3000",
+    "http://localhost:3002",
+    "https://brilliant-ferret-250.convex.site",
+  ]);
+
+  try {
+    const origin = new URL(siteUrl).origin;
+    trustedOrigins.add(origin);
+  } catch {
+    // Ignore malformed SITE_URL values; default trusted origins still apply.
+  }
+
   return betterAuth({
     baseURL: siteUrl,
     database: authComponent.adapter(ctx),
     // Allow requests from these origins (app hosts and Convex site)
-    trustedOrigins: [
-      "https://chat.opulentia.ai",
-      "https://worldeater.im",
-      "http://localhost:3000",
-      "https://brilliant-ferret-250.convex.site",
-    ],
+    trustedOrigins: Array.from(trustedOrigins),
     // Simple email/password auth without email verification for now
     emailAndPassword: {
       enabled: true,

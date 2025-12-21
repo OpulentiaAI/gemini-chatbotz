@@ -27,7 +27,11 @@ export const Navbar = () => {
   const handleSignOut = async () => {
     setSigningOut(true);
     try {
-      const res = await authClient.$fetch("/sign-out", { method: "POST" });
+      const res = await authClient.$fetch("/sign-out", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
       if (res?.error) {
         throw new Error(res.error.message || "Failed to sign out");
       }
@@ -99,4 +103,3 @@ export const Navbar = () => {
     </div>
   );
 };
-

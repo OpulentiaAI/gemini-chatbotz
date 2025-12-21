@@ -27,6 +27,10 @@ export default function Page() {
 
     setIsLoading(true);
     try {
+      const callbackURL =
+        process.env.NODE_ENV === "production" && typeof window !== "undefined"
+          ? window.location.origin
+          : undefined;
       const res = await fetch("/api/auth/sign-in/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -35,7 +39,7 @@ export default function Page() {
           email: emailValue,
           password,
           rememberMe: true,
-          callbackURL: typeof window !== "undefined" ? window.location.origin : undefined,
+          callbackURL,
         }),
       });
 

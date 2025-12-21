@@ -1521,27 +1521,38 @@ PRIORITY LEVELS:
 };
 
 export function createAgentWithModel(modelId: OpenRouterModelId) {
-  // Gemini 3 Flash has issues with multi-step tool calling via OpenRouter
-  // Reduce maxSteps and add specific handling to prevent timeouts
+  // Gemini 3 models have issues with tool calling when thinking/reasoning is enabled
+  // The thought_signature requirement causes errors via OpenRouter
+  // Solution: Use extraBody to disable thinking for Gemini 3 models when using tools
+  const isGemini3 = modelId.includes("gemini-3");
   const isGeminiFlash = modelId === "google/gemini-3-flash-preview";
   const isGeminiModel = modelId.startsWith("google/gemini");
   
+  // For Gemini 3 models, disable thinking to fix tool calling compatibility
+  const languageModel = isGemini3
+    ? openrouter(modelId, {
+        // Disable thinking/reasoning to avoid thought_signature errors with tools
+        extraBody: {
+          thinking: { type: "disabled" },
+        },
+      })
+    : openrouter(modelId);
+  
   return new Agent(components.agent, {
     name: `Agent (${modelId})`,
-    languageModel: openrouter(modelId),
+    languageModel,
     instructions: isGeminiFlash 
       ? baseInstructions + `\n\n<model_constraints>
-You are running on Gemini 3 Flash which has limited multi-step tool calling.
-- Prefer completing tasks in fewer tool calls when possible
-- If a tool call fails, summarize what you learned and ask the user how to proceed
-- Avoid chaining more than 2-3 tool calls in sequence
+You are running on Gemini 3 Flash.
+- Complete tasks efficiently with minimal tool calls
+- If a tool call fails, explain what happened and suggest alternatives
 </model_constraints>`
       : baseInstructions,
     tools: baseTools,
-    // Gemini Flash: limit to 3 steps to prevent timeout
-    // Other Gemini: limit to 5 steps  
+    // Gemini Flash: limit to 5 steps (increased since thinking disabled)
+    // Other Gemini: limit to 7 steps  
     // Others: 10 steps
-    maxSteps: isGeminiFlash ? 3 : (isGeminiModel ? 5 : 10),
+    maxSteps: isGeminiFlash ? 5 : (isGeminiModel ? 7 : 10),
   });
 }
 

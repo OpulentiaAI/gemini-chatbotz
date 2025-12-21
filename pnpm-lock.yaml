@@ -21,8 +21,8 @@ importers:
         specifier: ^2.20.0
         version: 2.20.0(react-dom@19.0.0-rc-7771d3a7-20240827(react@19.0.0-rc-7771d3a7-20240827))(react@19.0.0-rc-7771d3a7-20240827)
       '@convex-dev/agent':
-        specifier: ^0.3.1
-        version: 0.3.1(@ai-sdk/provider-utils@3.0.19(zod@3.25.76))(ai@5.0.102(zod@3.25.76))(convex-helpers@0.1.106(@standard-schema/spec@1.1.0)(convex@1.29.3(react@19.0.0-rc-7771d3a7-20240827))(react@19.0.0-rc-7771d3a7-20240827)(typescript@5.9.3)(zod@3.25.76))(convex@1.29.3(react@19.0.0-rc-7771d3a7-20240827))(react@19.0.0-rc-7771d3a7-20240827)
+        specifier: ^0.3.2
+        version: 0.3.2(@ai-sdk/provider-utils@3.0.19(zod@3.25.76))(ai@5.0.102(zod@3.25.76))(convex-helpers@0.1.106(@standard-schema/spec@1.1.0)(convex@1.29.3(react@19.0.0-rc-7771d3a7-20240827))(react@19.0.0-rc-7771d3a7-20240827)(typescript@5.9.3)(zod@3.25.76))(convex@1.29.3(react@19.0.0-rc-7771d3a7-20240827))(react@19.0.0-rc-7771d3a7-20240827)
       '@convex-dev/better-auth':
         specifier: ^0.10.5
         version: 0.10.5(9843d6983d3e0d90424239195fa4fb67)
@@ -580,8 +580,8 @@ packages:
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
     engines: {node: '>=0.1.90'}
 
-  '@convex-dev/agent@0.3.1':
-    resolution: {integrity: sha512-WfT0IlOBxvaDGn29bDQb2Rs6WBbhuqsvMmfl7FgGvg9dxnhMSsmKq8OnVr3C6Cc5S1hdCZeUHgpF8iZAnufZfA==}
+  '@convex-dev/agent@0.3.2':
+    resolution: {integrity: sha512-TMFReXejAIUE22OOn8PYvoOseAqwVOPm4WZU554GFk0lJ9kcNCGRJP/T1NTZfSBXrSaSUjETMFv2vEfXbG+4Qg==}
     peerDependencies:
       '@ai-sdk/provider-utils': ^3.0.7
       ai: ^5.0.29
@@ -6950,7 +6950,7 @@ snapshots:
   '@colors/colors@1.5.0':
     optional: true
 
-  '@convex-dev/agent@0.3.1(@ai-sdk/provider-utils@3.0.19(zod@3.25.76))(ai@5.0.102(zod@3.25.76))(convex-helpers@0.1.106(@standard-schema/spec@1.1.0)(convex@1.29.3(react@19.0.0-rc-7771d3a7-20240827))(react@19.0.0-rc-7771d3a7-20240827)(typescript@5.9.3)(zod@3.25.76))(convex@1.29.3(react@19.0.0-rc-7771d3a7-20240827))(react@19.0.0-rc-7771d3a7-20240827)':
+  '@convex-dev/agent@0.3.2(@ai-sdk/provider-utils@3.0.19(zod@3.25.76))(ai@5.0.102(zod@3.25.76))(convex-helpers@0.1.106(@standard-schema/spec@1.1.0)(convex@1.29.3(react@19.0.0-rc-7771d3a7-20240827))(react@19.0.0-rc-7771d3a7-20240827)(typescript@5.9.3)(zod@3.25.76))(convex@1.29.3(react@19.0.0-rc-7771d3a7-20240827))(react@19.0.0-rc-7771d3a7-20240827)':
     dependencies:
       '@ai-sdk/provider-utils': 3.0.19(zod@3.25.76)
       ai: 5.0.102(zod@3.25.76)
