@@ -127,14 +127,14 @@ export const sendMessage = action({
   handler: async (ctx, { threadId, prompt, userId, modelId, attachments }) => {
     // Initialize Braintrust (safe no-op if no API key)
     initBraintrust();
-    
+
     const agent: Agent = modelId ? createAgentWithModel(modelId) : flightAgent;
     const { thread } = await agent.continueThread(ctx, { threadId });
-    
+
     // PRE-ANALYZE files before sending to agent (avoids tool calling issues with Gemini 3 Pro)
     const fileAnalysis = attachments ? await preAnalyzeFiles(ctx, attachments, prompt) : "";
     const fullPrompt = prompt + fileAnalysis;
-    
+
     // Trace the generateText call with Braintrust
     const result = await traceMessage(
       "generateText",
@@ -143,7 +143,7 @@ export const sendMessage = action({
       fullPrompt,
       async () => thread.generateText({ prompt: fullPrompt })
     );
-    
+
     if (userId) {
       await ctx.runMutation(api.chatDb.updateThreadTitle, {
         threadId,
@@ -169,65 +169,70 @@ export const streamMessage = action({
   },
   handler: async (ctx, { threadId, prompt, userId, modelId, attachments }) => {
     // Initialize Braintrust (safe no-op if no API key)
-    initBraintrust();
-    
-    const agent: Agent = modelId ? createAgentWithModel(modelId) : flightAgent;
-    const { thread } = await agent.continueThread(ctx, { threadId });
-    
-    // PRE-ANALYZE files before sending to agent (avoids tool calling issues with Gemini 3 Pro)
-    const fileAnalysis = attachments ? await preAnalyzeFiles(ctx, attachments, prompt) : "";
-    const fullPrompt = prompt + fileAnalysis;
-    
-    // Gemini models can have transient provider errors - add retry logic
-    const isGeminiModel = modelId?.startsWith("google/gemini");
-    const maxRetries = isGeminiModel ? 2 : 1;
-    let lastError: Error | null = null;
-    
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        // IMPORTANT: For streaming, we trace the operation but don't wrap the stream itself
-        // This ensures streaming is not blocked by Braintrust logging
-        const result = await traceMessage(
-          "streamText",
-          threadId,
-          modelId,
-          fullPrompt,
-          async () => thread.streamText(
-            { prompt: fullPrompt },
-            { saveStreamDeltas: { throttleMs: 100 } }
-          )
-        );
-        
-        if (userId) {
-          await ctx.runMutation(api.chatDb.updateThreadTitle, {
+    try {
+      initBraintrust();
+
+      const agent: Agent = modelId ? createAgentWithModel(modelId) : flightAgent;
+      const { thread } = await agent.continueThread(ctx, { threadId });
+
+      // PRE-ANALYZE files before sending to agent (avoids tool calling issues with Gemini 3 Pro)
+      const fileAnalysis = attachments ? await preAnalyzeFiles(ctx, attachments, prompt) : "";
+      const fullPrompt = prompt + fileAnalysis;
+
+      // Gemini models can have transient provider errors - add retry logic
+      const isGeminiModel = modelId?.startsWith("google/gemini");
+      const maxRetries = isGeminiModel ? 2 : 1;
+      let lastError: Error | null = null;
+
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          // IMPORTANT: For streaming, we trace the operation but don't wrap the stream itself
+          // This ensures streaming is not blocked by Braintrust logging
+          const result = await traceMessage(
+            "streamText",
             threadId,
-            title: prompt.slice(0, 100),
-          });
+            modelId,
+            fullPrompt,
+            async () => thread.streamText(
+              { prompt: fullPrompt },
+              { saveStreamDeltas: { throttleMs: 100 } }
+            )
+          );
+
+          if (userId) {
+            await ctx.runMutation(api.chatDb.updateThreadTitle, {
+              threadId,
+              title: prompt.slice(0, 100),
+            });
+          }
+          return {
+            text: await result.text,
+            attachments: attachments || [],
+          };
+        } catch (error) {
+          lastError = error as Error;
+          const errorMessage = (error as Error).message || "";
+
+          // Only retry on transient provider errors
+          const isRetryable = errorMessage.includes("Provider returned error") ||
+            errorMessage.includes("Connection lost") ||
+            errorMessage.includes("timeout") ||
+            errorMessage.includes("ECONNRESET");
+
+          if (!isRetryable || attempt === maxRetries - 1) {
+            throw error;
+          }
+
+          console.log(`[streamMessage] Retry ${attempt + 1}/${maxRetries} for ${modelId} after error: ${errorMessage}`);
+          // Brief delay before retry
+          await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
         }
-        return {
-          text: await result.text,
-          attachments: attachments || [],
-        };
-      } catch (error) {
-        lastError = error as Error;
-        const errorMessage = (error as Error).message || "";
-        
-        // Only retry on transient provider errors
-        const isRetryable = errorMessage.includes("Provider returned error") ||
-                           errorMessage.includes("Connection lost") ||
-                           errorMessage.includes("timeout") ||
-                           errorMessage.includes("ECONNRESET");
-        
-        if (!isRetryable || attempt === maxRetries - 1) {
-          throw error;
-        }
-        
-        console.log(`[streamMessage] Retry ${attempt + 1}/${maxRetries} for ${modelId} after error: ${errorMessage}`);
-        // Brief delay before retry
-        await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
       }
+
+      throw lastError || new Error("Unknown error in streamMessage");
+    } catch (e) {
+      console.error("[streamMessage] CRITICAL ERROR:", e);
+      throw e;
     }
-    
-    throw lastError || new Error("Unknown error in streamMessage");
   },
 });

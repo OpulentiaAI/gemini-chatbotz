@@ -423,7 +423,7 @@ Perfect for:
     if (!process.env.EXA_API_KEY) {
       throw new Error("EXA_API_KEY not set");
     }
-    
+
     // Build enhanced query with filters
     let enhancedQuery = query;
     if (role && !query.toLowerCase().includes(role.toLowerCase())) {
@@ -435,9 +435,9 @@ Perfect for:
     if (location && !query.toLowerCase().includes(location.toLowerCase())) {
       enhancedQuery = `${enhancedQuery} in ${location}`;
     }
-    
+
     console.log(`[Exa People Search] Query: "${enhancedQuery}"`);
-    
+
     const body: Record<string, unknown> = {
       query: enhancedQuery,
       numResults,
@@ -454,15 +454,15 @@ Perfect for:
       },
       body: JSON.stringify(body),
     });
-    
+
     if (!res.ok) {
       const err = await res.text();
       throw new Error(`Exa people search failed: ${err}`);
     }
-    
+
     const data = await res.json();
     console.log(`[Exa People Search] Found ${data.results?.length || 0} results`);
-    
+
     // Format results for cleaner output
     return {
       searchType: "neural",
@@ -494,7 +494,7 @@ Perfect for:
     if (!process.env.EXA_API_KEY) {
       throw new Error("EXA_API_KEY not set");
     }
-    
+
     // Build enhanced query
     let enhancedQuery = query;
     if (industry && !query.toLowerCase().includes(industry.toLowerCase())) {
@@ -502,9 +502,9 @@ Perfect for:
     } else if (!query.toLowerCase().includes('company') && !query.toLowerCase().includes('startup')) {
       enhancedQuery = `${enhancedQuery} company`;
     }
-    
+
     console.log(`[Exa Company Search] Query: "${enhancedQuery}"`);
-    
+
     const body: Record<string, unknown> = {
       query: enhancedQuery,
       numResults,
@@ -521,14 +521,14 @@ Perfect for:
       },
       body: JSON.stringify(body),
     });
-    
+
     if (!res.ok) {
       const err = await res.text();
       throw new Error(`Exa company search failed: ${err}`);
     }
-    
+
     const data = await res.json();
-    
+
     return {
       results: (data.results || []).map((r: any) => ({
         title: r.title,
@@ -1130,10 +1130,10 @@ Use this to remember:
     }),
     handler: async (ctx, { content, factType, importance, tags, explanation }) => {
       console.log(`[ADD_MEMORY] ${explanation}`);
-      
+
       const userId = "default-user";
       const memorySpaceId = `user-${userId}`;
-      
+
       // First ensure memory space exists
       await ctx.runMutation((api as any).cortexMemorySpaces.getOrCreate, {
         memorySpaceId,
@@ -1189,10 +1189,10 @@ Use this to remember:
     }),
     handler: async (ctx, { factType, searchQuery, explanation }) => {
       console.log(`[LIST_MEMORIES] ${explanation}`);
-      
+
       const userId = "default-user";
       const memorySpaceId = `user-${userId}`;
-      
+
       let facts;
       if (searchQuery) {
         // Use search for semantic retrieval
@@ -1235,10 +1235,10 @@ Use this to remember:
     }),
     handler: async (ctx, { factId, explanation }) => {
       console.log(`[REMOVE_MEMORY] ${explanation}`);
-      
+
       const userId = "default-user";
       const memorySpaceId = `user-${userId}`;
-      
+
       try {
         await ctx.runMutation((api as any).cortexFacts.deleteFact, {
           memorySpaceId,
@@ -1268,10 +1268,10 @@ Use this to remember:
     }),
     handler: async (ctx, { factId, content, confidence, tags, explanation }) => {
       console.log(`[UPDATE_MEMORY] ${explanation}`);
-      
+
       const userId = "default-user";
       const memorySpaceId = `user-${userId}`;
-      
+
       try {
         await ctx.runMutation((api as any).cortexFacts.update, {
           memorySpaceId,
@@ -1311,10 +1311,10 @@ Use this to remember:
     }),
     handler: async (ctx, { query, factType, limit, explanation }) => {
       console.log(`[SEARCH_MEMORIES] ${explanation}`);
-      
+
       const userId = "default-user";
       const memorySpaceId = `user-${userId}`;
-      
+
       // Search in both memories and facts
       const [memories, facts] = await Promise.all([
         ctx.runQuery((api as any).cortexMemories.search, {
@@ -1397,24 +1397,24 @@ PRIORITY LEVELS:
     }),
     handler: async (ctx, { merge, todos, explanation }) => {
       console.log(`[TODO_WRITE] ${explanation}`);
-      
+
       const userId = "default-user";
       const threadId = `user-${userId}-todos`;
-      
+
       // Convert status to uppercase for Convex
       const toConvexStatus = (s: string) => s.toUpperCase().replace("_", "_") as "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
-      
+
       if (!merge) {
         // Clear existing todos first
         await ctx.runMutation((api as any).todos.removeAllByThread, { threadId });
       }
-      
+
       const results: Array<{ action: string; id: string; content: string; status: string }> = [];
-      
+
       for (let i = 0; i < todos.length; i++) {
         const todo = todos[i];
         if (!todo) continue;
-        
+
         const result = await ctx.runMutation((api as any).todos.create, {
           threadId,
           userId,
@@ -1424,7 +1424,7 @@ PRIORITY LEVELS:
           sequence: i,
           estimatedMinutes: todo.estimatedMinutes,
         });
-        
+
         if (result.success) {
           results.push({
             action: "created",
@@ -1441,10 +1441,10 @@ PRIORITY LEVELS:
           });
         }
       }
-      
+
       // Get stats
       const stats = await ctx.runQuery((api as any).todos.stats, { threadId });
-      
+
       return {
         success: true,
         message: `${merge ? "Merged" : "Replaced"} ${results.length} todos`,
@@ -1462,10 +1462,10 @@ PRIORITY LEVELS:
     }),
     handler: async (ctx, { status, explanation }) => {
       console.log(`[TODO_READ] ${explanation}`);
-      
+
       const userId = "default-user";
       const threadId = `user-${userId}-todos`;
-      
+
       let todos;
       if (status) {
         const convexStatus = status.toUpperCase().replace("_", "_") as "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
@@ -1473,9 +1473,9 @@ PRIORITY LEVELS:
       } else {
         todos = await ctx.runQuery((api as any).todos.byThread, { threadId });
       }
-      
+
       const stats = await ctx.runQuery((api as any).todos.stats, { threadId });
-      
+
       return {
         success: true,
         todos: (todos || []).map((t: any) => ({
@@ -1504,17 +1504,17 @@ PRIORITY LEVELS:
     }),
     handler: async (ctx, { todoId, status, content, priority, explanation }) => {
       console.log(`[TODO_UPDATE] ${explanation}`);
-      
+
       const updates: any = {};
       if (status) updates.status = status.toUpperCase().replace("_", "_");
       if (content) updates.content = content;
       if (priority) updates.priority = priority;
-      
+
       const result = await ctx.runMutation((api as any).todos.update, {
         todoId: todoId as any,
         ...updates,
       });
-      
+
       return result;
     },
   }),
@@ -1527,21 +1527,21 @@ export function createAgentWithModel(modelId: OpenRouterModelId) {
   const isGemini3 = modelId.includes("gemini-3");
   const isGeminiFlash = modelId === "google/gemini-3-flash-preview";
   const isGeminiModel = modelId.startsWith("google/gemini");
-  
+
   // For Gemini 3 models, disable thinking to fix tool calling compatibility
   const languageModel = isGemini3
     ? openrouter(modelId, {
-        // Disable thinking/reasoning to avoid thought_signature errors with tools
-        extraBody: {
-          thinking: { type: "disabled" },
-        },
-      })
+      // Disable thinking/reasoning to avoid thought_signature errors with tools
+      extraBody: {
+        thinking: { type: "disabled" },
+      },
+    })
     : openrouter(modelId);
-  
+
   return new Agent(components.agent, {
     name: `Agent (${modelId})`,
     languageModel,
-    instructions: isGeminiFlash 
+    instructions: isGeminiFlash
       ? baseInstructions + `\n\n<model_constraints>
 You are running on Gemini 3 Flash.
 - Complete tasks efficiently with minimal tool calls
@@ -1558,7 +1558,7 @@ You are running on Gemini 3 Flash.
 
 export const flightAgent: Agent = new Agent(components.agent, {
   name: "Flight Booking Agent",
-  languageModel: openrouter("google/gemini-3-pro-preview"),
+  languageModel: openrouter("google/gemini-3-flash-preview"),
   instructions: baseInstructions,
   tools: baseTools,
   maxSteps: 10,
