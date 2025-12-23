@@ -1540,23 +1540,46 @@ export function createAgentWithModel(modelId: OpenRouterModelId) {
     })
     : openrouter(modelId);
 
-  // MiniMax models have limited tool support - use only basic document tools
+  // MiniMax models - include coding and search tools, exclude complex multi-step flight tools
   const minimaxTools = {
+    // Document/coding tools
     createDocument: baseTools.createDocument,
     updateDocument: baseTools.updateDocument,
+    // Search tools
+    webSearch: baseTools.webSearch,
+    searchPeople: baseTools.searchPeople,
+    searchCompanies: baseTools.searchCompanies,
+    exaGetContents: baseTools.exaGetContents,
+    exaFindSimilar: baseTools.exaFindSimilar,
+    exaAnswer: baseTools.exaAnswer,
+    // Utility tools
     getWeather: baseTools.getWeather,
+    generateImage: baseTools.generateImage,
+    // Deepcrawl tools
+    deepcrawlGetMarkdown: baseTools.deepcrawlGetMarkdown,
+    deepcrawlReadUrl: baseTools.deepcrawlReadUrl,
+    // Memory tools
+    addMemory: baseTools.addMemory,
+    listMemories: baseTools.listMemories,
+    searchMemories: baseTools.searchMemories,
+    removeMemory: baseTools.removeMemory,
+    updateMemory: baseTools.updateMemory,
   };
 
   // Select appropriate tools based on model
   const tools = isMinimax ? minimaxTools : baseTools;
 
   // Custom instructions for MiniMax models
-  const minimaxInstructions = `You are a helpful AI assistant powered by MiniMax M2.1.
-You excel at coding, analysis, and conversation. Keep responses focused and helpful.
+  const minimaxInstructions = `You are a powerful AI assistant powered by MiniMax M2.1, optimized for coding and research.
 Today's date is ${new Date().toLocaleDateString()}.
 
-You can create documents for code or text content using the createDocument tool.
-For weather queries, use the getWeather tool with latitude/longitude coordinates.`;
+You excel at:
+- Code generation, debugging, and analysis
+- Web research and information synthesis
+- Document creation and editing
+- Answering complex questions
+
+Use webSearch for research, createDocument for code/text artifacts, and memory tools to remember user context.`;
 
   return new Agent(components.agent, {
     name: `Agent (${modelId})`,
