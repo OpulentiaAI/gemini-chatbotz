@@ -38,6 +38,7 @@ const modelValidator = v.optional(v.union(
   v.literal("moonshotai/kimi-k2-thinking"),
   v.literal("prime-intellect/intellect-3"),
   v.literal("minimax/minimax-m2"),
+  v.literal("minimax/minimax-m2.1"),
   v.literal("x-ai/grok-code-fast-1"),
   v.literal("z-ai/glm-4.6"),
   v.literal("z-ai/glm-4.6v"),

@@ -32,6 +32,7 @@ type OpenRouterModelId =
   | "moonshotai/kimi-k2-thinking"
   | "prime-intellect/intellect-3"
   | "minimax/minimax-m2"
+  | "minimax/minimax-m2.1"
   | "x-ai/grok-code-fast-1"
   | "z-ai/glm-4.6"
   | "z-ai/glm-4.6v"
