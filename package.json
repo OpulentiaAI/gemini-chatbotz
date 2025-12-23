@@ -138,5 +138,10 @@
     "tsx": "^4.19.1",
     "typescript": "^5",
     "vitest": "^4.0.15"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "@convex-dev/agent@0.3.2": "patches/@convex-dev__agent@0.3.2.patch"
+    }
   }
 }

@@ -319,6 +319,7 @@ export declare const components: {
                               string,
                               Record<string, any>
                             >;
+                            signature?: string;
                             toolCallId: string;
                             toolName: string;
                             type: "tool-call";
@@ -622,6 +623,7 @@ export declare const components: {
                               string,
                               Record<string, any>
                             >;
+                            signature?: string;
                             toolCallId: string;
                             toolName: string;
                             type: "tool-call";
@@ -950,6 +952,7 @@ export declare const components: {
                             Record<string, any>
                           >;
                           providerOptions?: Record<string, Record<string, any>>;
+                          signature?: string;
                           toolCallId: string;
                           toolName: string;
                           type: "tool-call";
@@ -1264,6 +1267,7 @@ export declare const components: {
                               string,
                               Record<string, any>
                             >;
+                            signature?: string;
                             toolCallId: string;
                             toolName: string;
                             type: "tool-call";
@@ -1563,6 +1567,7 @@ export declare const components: {
                             Record<string, any>
                           >;
                           providerOptions?: Record<string, Record<string, any>>;
+                          signature?: string;
                           toolCallId: string;
                           toolName: string;
                           type: "tool-call";
@@ -1836,6 +1841,7 @@ export declare const components: {
                             Record<string, any>
                           >;
                           providerOptions?: Record<string, Record<string, any>>;
+                          signature?: string;
                           toolCallId: string;
                           toolName: string;
                           type: "tool-call";
@@ -2123,6 +2129,7 @@ export declare const components: {
                               string,
                               Record<string, any>
                             >;
+                            signature?: string;
                             toolCallId: string;
                             toolName: string;
                             type: "tool-call";
@@ -2347,6 +2354,7 @@ export declare const components: {
                             Record<string, any>
                           >;
                           providerOptions?: Record<string, Record<string, any>>;
+                          signature?: string;
                           toolCallId: string;
                           toolName: string;
                           type: "tool-call";

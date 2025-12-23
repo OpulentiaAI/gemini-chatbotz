@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
-import { useAction, useQuery } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useSafeUIMessages } from "@/hooks/use-safe-ui-messages";
+import { useUIMessages } from "@convex-dev/agent/react";
 import { Message as PreviewMessage } from "@/components/custom/message";
 import {
   Conversation,
@@ -70,19 +70,23 @@ export function Chat({
   initialMessages?: Array<any>;
   userId?: string;
 }) {
+  const isValidConvexThreadId = useCallback((threadId: string) => {
+    // Convex thread IDs are lowercase alphanumeric (e.g. "m57857vxf5zexbj8h5a41448bx7xp9qw")
+    // UUIDs include dashes and should not be treated as agent thread IDs.
+    return /^[a-z0-9]+$/.test(threadId) && !threadId.includes("-");
+  }, []);
+
   const { data: session, isPending: isSessionLoading } = authClient.useSession();
   const effectiveUserId = useMemo(
     () => session?.user?.id ?? userId ?? "guest-user-00000000-0000-0000-0000-000000000000",
     [session?.user?.id, userId]
   );
 
-  // Check if the page id corresponds to an existing thread in userThreads (for history tracking)
-  const existingThread = useQuery(api.chatDb.getThreadById, id ? { threadId: id } : "skip");
-  
   // Track the active threadId for this chat session
-  // If we have an id from URL, use it directly - messages are stored in agent's internal tables
-  // The userThreads table is for history sidebar, not for message storage
-  const [threadId, setThreadId] = useState<string | null>(id || null);
+  // `id` is a page identifier and may be a UUID. Only treat `id` as a threadId if it matches Convex's ID format.
+  const [threadId, setThreadId] = useState<string | null>(
+    () => (id && isValidConvexThreadId(id) ? id : null)
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedModel, setSelectedModel] = useState<OpenRouterModelId>(DEFAULT_MODEL);
@@ -90,10 +94,8 @@ export function Chat({
 
   // Sync threadId with URL id when navigating between chats
   useEffect(() => {
-    // If id exists, use it as threadId (messages are in agent's internal storage)
-    // If id is undefined (home page), reset to null for new chat
-    setThreadId(id || null);
-  }, [id]);
+    setThreadId(id && isValidConvexThreadId(id) ? id : null);
+  }, [id, isValidConvexThreadId]);
 
   const createThread = useAction(api.chat.createNewThread);
   // Use streamMessage for realtime streaming with Convex
@@ -162,7 +164,7 @@ export function Chat({
   );
 
   // Use safe wrapper that handles undefined paginated results
-  const { results: messages, status } = useSafeUIMessages(
+  const { results: messages, status } = useUIMessages(
     api.chatDb.listMessages,
     threadId ? { threadId } : "skip",
     { initialNumItems: 50, stream: true }
@@ -188,7 +190,10 @@ export function Chat({
       try {
         let currentThreadId = threadId;
         if (!currentThreadId) {
-          const result = await createThread({ userId: effectiveUserId });
+          const result = await createThread({
+            userId: effectiveUserId,
+            modelId: modelId || selectedModel,
+          });
           currentThreadId = result.threadId;
           setThreadId(currentThreadId);
           if (typeof window !== "undefined") {

@@ -1,0 +1,121 @@
+diff --git a/dist/mapping.js b/dist/mapping.js
+index 7421fea4172d78a8dd4180f5c9f1017791006990..ce3d1e44d06f8ed2cb0f057e9c8f20b4d1663e73 100644
+--- a/dist/mapping.js
++++ b/dist/mapping.js
+@@ -204,11 +204,13 @@ export async function serializeContent(ctx, component, content) {
+             }
+             case "tool-call": {
+                 const args = "input" in part ? part.input : part.args;
++                const signature = part.signature ?? part.thought_signature ?? part.thoughtSignature;
+                 return {
+                     type: part.type,
+                     args: args ?? null,
+                     toolCallId: part.toolCallId,
+                     toolName: part.toolName,
++                    ...(signature ? { signature } : {}),
+                     providerExecuted: part.providerExecuted,
+                     ...metadata,
+                 };
+@@ -217,9 +219,11 @@ export async function serializeContent(ctx, component, content) {
+                 return normalizeToolResult(part, metadata);
+             }
+             case "reasoning": {
++                const signature = part.signature ?? part.thought_signature ?? part.thoughtSignature;
+                 return {
+                     type: part.type,
+                     text: part.text,
++                    ...(signature ? { signature } : {}),
+                     ...metadata,
+                 };
+             }
+@@ -274,22 +278,30 @@ export function fromModelMessageContent(content) {
+                     ...metadata,
+                 };
+             case "tool-call":
+-                return {
+-                    type: part.type,
+-                    args: part.input ?? null,
+-                    toolCallId: part.toolCallId,
+-                    toolName: part.toolName,
+-                    providerExecuted: part.providerExecuted,
+-                    ...metadata,
+-                };
++                return (() => {
++                    const signature = part.signature ?? part.thought_signature ?? part.thoughtSignature;
++                    return {
++                        type: part.type,
++                        args: part.input ?? null,
++                        toolCallId: part.toolCallId,
++                        toolName: part.toolName,
++                        ...(signature ? { signature } : {}),
++                        providerExecuted: part.providerExecuted,
++                        ...metadata,
++                    };
++                })();
+             case "tool-result":
+                 return normalizeToolResult(part, metadata);
+             case "reasoning":
+-                return {
+-                    type: part.type,
+-                    text: part.text,
+-                    ...metadata,
+-                };
++                return (() => {
++                    const signature = part.signature ?? part.thought_signature ?? part.thoughtSignature;
++                    return {
++                        type: part.type,
++                        text: part.text,
++                        ...(signature ? { signature } : {}),
++                        ...metadata,
++                    };
++                })();
+             // Not in current generation output, but could be in historical messages
+             default:
+                 return part;
+@@ -332,11 +344,13 @@ export function toModelMessageContent(content) {
+                 };
+             case "tool-call": {
+                 const input = "input" in part ? part.input : part.args;
++                const signature = part.signature ?? part.thought_signature ?? part.thoughtSignature;
+                 return {
+                     type: part.type,
+                     input: input ?? null,
+                     toolCallId: part.toolCallId,
+                     toolName: part.toolName,
++                    ...(signature ? { signature } : {}),
+                     providerExecuted: part.providerExecuted,
+                     ...metadata,
+                 };
+@@ -345,11 +359,15 @@ export function toModelMessageContent(content) {
+                 return normalizeToolResult(part, metadata);
+             }
+             case "reasoning":
+-                return {
+-                    type: part.type,
+-                    text: part.text,
+-                    ...metadata,
+-                };
++                return (() => {
++                    const signature = part.signature ?? part.thought_signature ?? part.thoughtSignature;
++                    return {
++                        type: part.type,
++                        text: part.text,
++                        ...(signature ? { signature } : {}),
++                        ...metadata,
++                    };
++                })();
+             case "redacted-reasoning":
+                 // TODO: should we just drop this?
+                 return {
+diff --git a/dist/validators.js b/dist/validators.js
+index eea4672fa52e42821388afbe19707e91cd9bde92..97117d3676a3dbee337c82e48aff30618d1ca2eb 100644
+--- a/dist/validators.js
++++ b/dist/validators.js
+@@ -70,6 +70,7 @@ export const vToolCallPart = v.object({
+     toolCallId: v.string(),
+     toolName: v.string(),
+     args: v.any(),
++    signature: v.optional(v.string()),
+     providerExecuted: v.optional(v.boolean()),
+     providerOptions,
+     providerMetadata,

@@ -35,6 +35,7 @@ type OpenRouterModelId =
   | "x-ai/grok-code-fast-1"
   | "z-ai/glm-4.6"
   | "z-ai/glm-4.6v"
+  | "z-ai/glm-4.7"
   | "qwen/qwen3-vl-235b-a22b-instruct";
 
 const baseInstructions = `
@@ -1521,19 +1522,18 @@ PRIORITY LEVELS:
 };
 
 export function createAgentWithModel(modelId: OpenRouterModelId) {
-  // Gemini 3 models have issues with tool calling when thinking/reasoning is enabled
-  // The thought_signature requirement causes errors via OpenRouter
-  // Solution: Use extraBody to disable thinking for Gemini 3 models when using tools
+  // Gemini 3 models support "thinking". When tool calling is enabled, Google requires
+  // thought signatures to be preserved across steps; we rely on a pnpm patch that
+  // preserves signature fields in @convex-dev/agent's message serialization.
   const isGemini3 = modelId.includes("gemini-3");
   const isGeminiFlash = modelId === "google/gemini-3-flash-preview";
   const isGeminiModel = modelId.startsWith("google/gemini");
 
-  // For Gemini 3 models, disable thinking to fix tool calling compatibility
+  // For Gemini 3 models, explicitly enable thinking.
   const languageModel = isGemini3
     ? openrouter(modelId, {
-      // Disable thinking/reasoning to avoid thought_signature errors with tools
       extraBody: {
-        thinking: { type: "disabled" },
+        thinking: { type: "enabled" },
       },
     })
     : openrouter(modelId);
@@ -1558,7 +1558,10 @@ You are running on Gemini 3 Flash.
 
 export const flightAgent: Agent = new Agent(components.agent, {
   name: "Flight Booking Agent",
-  languageModel: openrouter("google/gemini-3-flash-preview"),
+  // Enable Gemini thinking (signatures preserved via patched dependency).
+  languageModel: openrouter("google/gemini-3-flash-preview", {
+    extraBody: { thinking: { type: "enabled" } },
+  }),
   instructions: baseInstructions,
   tools: baseTools,
   maxSteps: 10,

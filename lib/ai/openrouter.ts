@@ -27,13 +27,14 @@ export type OpenRouterModelId =
   | "deepseek/deepseek-chat"
   | "deepseek/deepseek-v3.2"
   | "deepseek/deepseek-v3.2-speciale"
-  | "x-ai/grok-4.1-fast:free"
+  | "x-ai/grok-4.1-fast"
   | "moonshotai/kimi-k2-thinking"
   | "prime-intellect/intellect-3"
   | "minimax/minimax-m2"
   | "x-ai/grok-code-fast-1"
   | "z-ai/glm-4.6"
   | "z-ai/glm-4.6v"
+  | "z-ai/glm-4.7"
   | "qwen/qwen3-vl-235b-a22b-instruct";
 
 export interface ModelDefinition {
@@ -106,10 +107,10 @@ export const OPENROUTER_MODELS: ModelDefinition[] = [
     capabilities: { vision: true, functionCalling: true, streaming: true },
   },
   {
-    id: "x-ai/grok-4.1-fast:free",
+    id: "x-ai/grok-4.1-fast",
     name: "Grok 4.1 Fast",
     provider: "xAI",
-    description: "Free, fast Grok model from xAI",
+    description: "xAI's latest multimodal model with SOTA cost-efficiency and 2M context",
     contextLength: 131072,
     maxOutput: 16384,
     pricing: { prompt: 0.0, completion: 0.0 },
@@ -295,6 +296,17 @@ export const OPENROUTER_MODELS: ModelDefinition[] = [
     maxOutput: 8192,
     pricing: { prompt: 0.0003, completion: 0.0009 },
     capabilities: { vision: true, functionCalling: true, streaming: true },
+  },
+  {
+    id: "z-ai/glm-4.7",
+    name: "GLM 4.7",
+    provider: "Z.AI",
+    description:
+      "Z.AI's flagship model with enhanced programming capabilities and stable multi-step reasoning for complex agent tasks.",
+    contextLength: 202752,
+    maxOutput: 8192,
+    pricing: { prompt: 0.00044, completion: 0.00174 },
+    capabilities: { functionCalling: true, streaming: true },
   },
   {
     id: "qwen/qwen3-vl-235b-a22b-instruct",

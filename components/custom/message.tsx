@@ -82,7 +82,7 @@ export const Message = memo(({
 
       <div className="flex flex-col gap-2 w-full">
         {/* Reasoning/Thinking section */}
-        {reasoning && (
+        {reasoning && reasoning.trim().length > 0 && (
           <Reasoning isStreaming={isStreaming} defaultOpen={isStreaming}>
             <ReasoningTrigger />
             <ReasoningContent>{reasoning}</ReasoningContent>
@@ -132,3 +132,5 @@ export const Message = memo(({
     </motion.div>
   );
 });
+
+Message.displayName = "Message";

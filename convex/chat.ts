@@ -2,11 +2,18 @@
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { flightAgent, codeAgent, quickAgent, researchAgent, createAgentWithModel } from "./agent";
-import { Agent } from "@convex-dev/agent";
+import { flightAgent, quickAgent, createAgentWithModel } from "./agent";
+import type { Agent } from "@convex-dev/agent";
 import { internal, api } from "./_generated/api";
-import { Id } from "./_generated/dataModel";
+import type { Id } from "./_generated/dataModel";
 import { initBraintrust, traceMessage } from "../lib/braintrust";
+
+// Helper to validate if threadId is a valid Convex ID format (not a UUID)
+function isValidConvexThreadId(threadId: string): boolean {
+  // Convex IDs are lowercase alphanumeric (like "m57857vxf5zexbj8h5a41448bx7xp9qw")
+  // UUIDs have dashes (like "e25c1f68-2595-4d48-bb9a-802b3d336951")
+  return /^[a-z0-9]+$/.test(threadId) && !threadId.includes("-");
+}
 
 const modelValidator = v.optional(v.union(
   v.literal("openai/gpt-4o"),
@@ -34,6 +41,7 @@ const modelValidator = v.optional(v.union(
   v.literal("x-ai/grok-code-fast-1"),
   v.literal("z-ai/glm-4.6"),
   v.literal("z-ai/glm-4.6v"),
+  v.literal("z-ai/glm-4.7"),
   v.literal("qwen/qwen3-vl-235b-a22b-instruct")
 ));
 
@@ -49,6 +57,7 @@ const fileAttachmentValidator = v.object({
  * Pre-analyze files BEFORE sending to the agent.
  * This avoids the thought_signature issue with Gemini 3 Pro tool calling.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function preAnalyzeFiles(
   ctx: any,
   files: Array<{ storageId?: string; url?: string; fileName: string; mediaType: string }>,
@@ -93,7 +102,7 @@ async function preAnalyzeFiles(
 function selectAgent(modelId?: string): Agent {
   if (!modelId) return flightAgent;
   if (modelId.includes("gpt-4o-mini")) return quickAgent;
-  return flightAgent;
+  return createAgentWithModel(modelId as any);
 }
 
 export const createNewThread = action({
@@ -129,7 +138,19 @@ export const sendMessage = action({
     initBraintrust();
 
     const agent: Agent = modelId ? createAgentWithModel(modelId) : flightAgent;
-    const { thread } = await agent.continueThread(ctx, { threadId });
+    
+    // Validate threadId is a valid Convex ID format (not a UUID)
+    // If it's a UUID (legacy format), create a new thread instead
+    let effectiveThreadId = threadId;
+    if (!isValidConvexThreadId(threadId)) {
+      console.log(`[sendMessage] Invalid threadId format (UUID): ${threadId}, creating new thread`);
+      const { threadId: newThreadId } = await agent.createThread(ctx, {
+        userId: userId ?? "anonymous",
+      });
+      effectiveThreadId = newThreadId;
+    }
+    
+    const { thread } = await agent.continueThread(ctx, { threadId: effectiveThreadId });
 
     // PRE-ANALYZE files before sending to agent (avoids tool calling issues with Gemini 3 Pro)
     const fileAnalysis = attachments ? await preAnalyzeFiles(ctx, attachments, prompt) : "";
@@ -138,7 +159,7 @@ export const sendMessage = action({
     // Trace the generateText call with Braintrust
     const result = await traceMessage(
       "generateText",
-      threadId,
+      effectiveThreadId,
       modelId,
       fullPrompt,
       async () => thread.generateText({ prompt: fullPrompt })
@@ -146,7 +167,7 @@ export const sendMessage = action({
 
     if (userId) {
       await ctx.runMutation(api.chatDb.updateThreadTitle, {
-        threadId,
+        threadId: effectiveThreadId,
         title: prompt.slice(0, 100),
       });
     }
@@ -173,7 +194,27 @@ export const streamMessage = action({
       initBraintrust();
 
       const agent: Agent = modelId ? createAgentWithModel(modelId) : flightAgent;
-      const { thread } = await agent.continueThread(ctx, { threadId });
+      
+      // Validate threadId is a valid Convex ID format (not a UUID)
+      // If it's a UUID (legacy format), create a new thread instead
+      let effectiveThreadId = threadId;
+      if (!isValidConvexThreadId(threadId)) {
+        console.log(`[streamMessage] Invalid threadId format (UUID): ${threadId}, creating new thread`);
+        const { threadId: newThreadId } = await agent.createThread(ctx, {
+          userId: userId ?? "anonymous",
+        });
+        effectiveThreadId = newThreadId;
+        
+        // Update userThreads to map the old UUID to the new thread
+        if (userId) {
+          await ctx.runMutation(api.chatDb.saveUserThread, {
+            threadId: effectiveThreadId,
+            userId,
+          });
+        }
+      }
+      
+      const { thread } = await agent.continueThread(ctx, { threadId: effectiveThreadId });
 
       // PRE-ANALYZE files before sending to agent (avoids tool calling issues with Gemini 3 Pro)
       const fileAnalysis = attachments ? await preAnalyzeFiles(ctx, attachments, prompt) : "";
@@ -190,7 +231,7 @@ export const streamMessage = action({
           // This ensures streaming is not blocked by Braintrust logging
           const result = await traceMessage(
             "streamText",
-            threadId,
+            effectiveThreadId,
             modelId,
             fullPrompt,
             async () => thread.streamText(
@@ -201,7 +242,7 @@ export const streamMessage = action({
 
           if (userId) {
             await ctx.runMutation(api.chatDb.updateThreadTitle, {
-              threadId,
+              threadId: effectiveThreadId,
               title: prompt.slice(0, 100),
             });
           }

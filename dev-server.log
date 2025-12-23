@@ -1,0 +1,78 @@
+
+> gemini-chatbot-deploy-test@0.1.0 dev /Users/jeremyalston/Downloads/Component paradise/Gesthemane/gemini-chatbotz
+> next dev --webpack --port 3002
+
+   ▲ Next.js 16.0.10 (webpack)
+   - Local:         http://localhost:3002
+   - Network:       http://192.168.1.219:3002
+   - Environments: .env.local
+
+ ✓ Starting...
+ ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+ ✓ Ready in 1149ms
+ GET /register 200 in 2.6s (compile: 2.2s, proxy.ts: 57ms, render: 296ms)
+ GET /register?email=codex%2B1766347352712%40example.com&password=P%40ssw0rd%2112345 200 in 245ms (compile: 7ms, proxy.ts: 3ms, render: 235ms)
+ GET /api/auth/get-session 200 in 2.2s (compile: 1861ms, render: 293ms)
+ GET /register 200 in 384ms (compile: 65ms, proxy.ts: 5ms, render: 314ms)
+ GET /api/auth/get-session 200 in 287ms (compile: 3ms, render: 284ms)
+ POST /api/auth/sign-up/email 200 in 959ms (compile: 3ms, render: 956ms)
+ GET /api/auth/get-session 200 in 399ms (compile: 6ms, render: 393ms)
+ GET /api/auth/convex/token 200 in 166ms (compile: 1017µs, render: 165ms)
+ GET /api/auth/convex/token 200 in 150ms (compile: 2ms, render: 148ms)
+ GET /register 200 in 46ms (compile: 2ms, proxy.ts: 9ms, render: 35ms)
+ ○ Compiling / ...
+ResponseAborted: 
+    at ignore-listed frames
+ GET /register 200 in 449ms (compile: 24ms, proxy.ts: 16ms, render: 409ms)
+ GET /api/auth/get-session 200 in 297ms (compile: 12ms, render: 285ms)
+ POST /api/auth/sign-up/email 200 in 863ms (compile: 6ms, render: 857ms)
+ GET /api/auth/get-session 200 in 349ms (compile: 3ms, render: 346ms)
+ GET /api/auth/convex/token 200 in 159ms (compile: 2ms, render: 157ms)
+ GET /api/auth/convex/token 200 in 165ms (compile: 3ms, render: 161ms)
+ GET / 200 in 79ms (compile: 35ms, proxy.ts: 21ms, render: 23ms)
+ GET /register 200 in 83ms (compile: 6ms, proxy.ts: 21ms, render: 55ms)
+ GET /api/auth/convex/token 200 in 168ms (compile: 5ms, render: 163ms)
+ POST /api/auth/sign-out 415 in 306ms (compile: 9ms, render: 297ms)
+ GET /register 200 in 284ms (compile: 96ms, proxy.ts: 11ms, render: 176ms)
+ GET /api/auth/get-session 200 in 483ms (compile: 188ms, render: 295ms)
+ POST /api/auth/sign-up/email 200 in 855ms (compile: 2ms, render: 853ms)
+ GET /api/auth/get-session 200 in 382ms (compile: 3ms, render: 380ms)
+ GET /api/auth/convex/token 200 in 159ms (compile: 1408µs, render: 158ms)
+ GET /api/auth/convex/token 200 in 146ms (compile: 1832µs, render: 144ms)
+ GET / 200 in 143ms (compile: 76ms, proxy.ts: 26ms, render: 41ms)
+ GET /register 200 in 144ms (compile: 2ms, proxy.ts: 26ms, render: 115ms)
+ GET /api/auth/convex/token 200 in 160ms (compile: 4ms, render: 157ms)
+ POST /api/auth/sign-out 403 in 160ms (compile: 3ms, render: 157ms)
+ GET /register 200 in 78ms (compile: 4ms, proxy.ts: 14ms, render: 60ms)
+ GET /api/auth/get-session 200 in 322ms (compile: 7ms, render: 315ms)
+ POST /api/auth/sign-up/email 200 in 1007ms (compile: 8ms, render: 999ms)
+ GET /api/auth/get-session 200 in 372ms (compile: 2ms, render: 370ms)
+ GET /api/auth/convex/token 200 in 150ms (compile: 794µs, render: 149ms)
+ GET /api/auth/convex/token 200 in 161ms (compile: 2ms, render: 159ms)
+ GET / 200 in 45ms (compile: 25ms, proxy.ts: 8ms, render: 13ms)
+ GET /register 200 in 46ms (compile: 4ms, proxy.ts: 8ms, render: 34ms)
+ GET /api/auth/convex/token 200 in 161ms (compile: 2ms, render: 159ms)
+ POST /api/auth/sign-out 403 in 168ms (compile: 4ms, render: 163ms)
+ GET /register 200 in 60ms (compile: 3ms, proxy.ts: 3ms, render: 54ms)
+ GET /api/auth/get-session 200 in 306ms (compile: 2ms, render: 303ms)
+ POST /api/auth/sign-up/email 200 in 990ms (compile: 1746µs, render: 988ms)
+ GET /api/auth/get-session 200 in 404ms (compile: 2ms, render: 402ms)
+ GET /api/auth/convex/token 200 in 168ms (compile: 1186µs, render: 167ms)
+ GET /api/auth/convex/token 200 in 150ms (compile: 3ms, render: 147ms)
+ GET / 200 in 40ms (compile: 15ms, proxy.ts: 6ms, render: 18ms)
+ GET /register 200 in 41ms (compile: 2ms, proxy.ts: 6ms, render: 32ms)
+ GET /api/auth/convex/token 200 in 154ms (compile: 3ms, render: 152ms)
+ GET /login 200 in 3.0s (compile: 2.7s, proxy.ts: 4ms, render: 351ms)
+ GET /register 200 in 548ms (compile: 26ms, proxy.ts: 10ms, render: 512ms)
+ GET /api/auth/get-session 200 in 671ms (compile: 376ms, render: 295ms)
+ GET /api/auth/get-session 200 in 165ms (compile: 1951µs, render: 163ms)
+ GET /api/auth/convex/token 200 in 153ms (compile: 2ms, render: 150ms)
+ GET /api/auth/convex/token 200 in 153ms (compile: 1776µs, render: 152ms)
+ POST /api/auth/sign-in/email 200 in 794ms (compile: 6ms, render: 787ms)
+ GET /api/auth/get-session 200 in 245ms (compile: 2ms, render: 243ms)
+ GET /api/auth/convex/token 200 in 149ms (compile: 1562µs, render: 147ms)
+ GET /api/auth/convex/token 200 in 146ms (compile: 839µs, render: 145ms)
+ GET / 200 in 95ms (compile: 28ms, proxy.ts: 5ms, render: 62ms)
+ GET /login 200 in 100ms (compile: 60ms, proxy.ts: 5ms, render: 34ms)
+ GET /api/auth/convex/token 200 in 191ms (compile: 4ms, render: 188ms)
+ GET /api/auth/convex/token 200 in 218ms (compile: 4ms, render: 214ms)
