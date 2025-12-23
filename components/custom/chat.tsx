@@ -164,8 +164,9 @@ export function Chat({
   );
 
   // Use safe wrapper that handles undefined paginated results
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { results: messages, status } = useUIMessages(
-    api.chatDb.listMessages,
+    api.chatDb.listMessages as any,
     threadId ? { threadId } : "skip",
     { initialNumItems: 50, stream: true }
   );
@@ -192,7 +193,7 @@ export function Chat({
         if (!currentThreadId) {
           const result = await createThread({
             userId: effectiveUserId,
-            modelId: modelId || selectedModel,
+            modelId: (modelId || selectedModel) as any,
           });
           currentThreadId = result.threadId;
           setThreadId(currentThreadId);
@@ -232,7 +233,7 @@ export function Chat({
           threadId: currentThreadId,
           prompt,
           userId: effectiveUserId,
-          modelId: modelId || selectedModel,
+          modelId: (modelId || selectedModel) as any,
           attachments: uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
         });
       } catch (error) {
@@ -306,14 +307,16 @@ export function Chat({
           {messages.map((message, index) => {
             const isLastMessage = index === messages.length - 1;
             const messageIsStreaming = isLastMessage && message.role === "assistant" && isStreamingResponse;
-            
+            // Cast message to access id and text properties
+            const msg = message as any;
+
             return (
               <PreviewMessage
-                key={message.id}
+                key={msg.id || index}
                 chatId={threadId || id}
                 role={message.role}
-                content={message.text || ""}
-                toolInvocations={getToolInvocations(message.parts, message.id)}
+                content={msg.text || ""}
+                toolInvocations={getToolInvocations(message.parts, msg.id)}
                 attachments={[]}
                 reasoning={getReasoningFromParts(message.parts)}
                 isStreaming={messageIsStreaming}

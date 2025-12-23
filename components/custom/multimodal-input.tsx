@@ -1,6 +1,7 @@
 "use client";
 
-import { Attachment, ChatRequestOptions, CreateMessage, Message } from "ai";
+import type { UIMessage, CreateUIMessage, ChatRequestOptions } from "ai";
+import type { Attachment } from "@/lib/ai/types";
 import { motion } from "framer-motion";
 import React, {
   useRef,
@@ -49,9 +50,9 @@ export function MultimodalInput({
   stop: () => void;
   attachments: Array<Attachment>;
   setAttachments: Dispatch<SetStateAction<Array<Attachment>>>;
-  messages: Array<Message>;
+  messages: Array<UIMessage>;
   append: (
-    message: Message | CreateMessage,
+    message: UIMessage | CreateUIMessage<any>,
     chatRequestOptions?: ChatRequestOptions,
   ) => Promise<string | null | undefined>;
   handleSubmit: (
@@ -87,8 +88,10 @@ export function MultimodalInput({
 
   const submitForm = useCallback(() => {
     handleSubmit(undefined, {
-      experimental_attachments: attachments,
-    });
+      // In AI SDK 6, attachments should be handled via message content parts
+      // For now, we pass them as a custom property that will be handled by the submit handler
+      body: { attachments },
+    } as ChatRequestOptions);
 
     setAttachments([]);
 
@@ -170,7 +173,7 @@ export function MultimodalInput({
                   onClick={async () => {
                     append({
                       role: "user",
-                      content: suggestedAction.action,
+                      parts: [{ type: "text", text: suggestedAction.action }],
                     });
                   }}
                   className="border-none bg-muted/50 w-full text-left border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-300 rounded-lg p-3 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex flex-col"

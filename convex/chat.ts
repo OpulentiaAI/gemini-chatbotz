@@ -158,12 +158,13 @@ export const sendMessage = action({
     const fullPrompt = prompt + fileAnalysis;
 
     // Trace the generateText call with Braintrust
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await traceMessage(
       "generateText",
       effectiveThreadId,
       modelId,
       fullPrompt,
-      async () => thread.generateText({ prompt: fullPrompt })
+      async () => thread.generateText({ prompt: fullPrompt } as any)
     );
 
     if (userId) {
@@ -230,13 +231,14 @@ export const streamMessage = action({
         try {
           // IMPORTANT: For streaming, we trace the operation but don't wrap the stream itself
           // This ensures streaming is not blocked by Braintrust logging
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const result = await traceMessage(
             "streamText",
             effectiveThreadId,
             modelId,
             fullPrompt,
             async () => thread.streamText(
-              { prompt: fullPrompt },
+              { prompt: fullPrompt } as any,
               { saveStreamDeltas: { throttleMs: 100 } }
             )
           );

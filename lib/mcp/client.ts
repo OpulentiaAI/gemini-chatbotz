@@ -1,8 +1,11 @@
 import { experimental_createMCPClient } from "@ai-sdk/mcp";
 import type { MCPServerConfig, MCPLoadResult, MCPToolInfo } from "./types";
 
+// Alias for future migration when API becomes stable
+const createMCPClient = experimental_createMCPClient;
+
 // Type for the MCP client
-type MCPClient = Awaited<ReturnType<typeof experimental_createMCPClient>>;
+type MCPClient = Awaited<ReturnType<typeof createMCPClient>>;
 type MCPToolSet = Awaited<ReturnType<MCPClient["tools"]>>;
 
 /**
@@ -22,7 +25,7 @@ export async function loadToolsFromServer(
     console.log(`[MCP] Connecting to server: ${server.name} (${server.url})`);
     
     // Create MCP client with SSE transport
-    client = await experimental_createMCPClient({
+    client = await createMCPClient({
       transport: {
         type: "sse",
         url: server.url,
@@ -130,7 +133,7 @@ export async function testMCPConnection(
   let client: MCPClient | null = null;
   
   try {
-    client = await experimental_createMCPClient({
+    client = await createMCPClient({
       transport: {
         type: "sse",
         url,
@@ -166,7 +169,7 @@ export async function getMCPServerTools(
   let client: MCPClient | null = null;
   
   try {
-    client = await experimental_createMCPClient({
+    client = await createMCPClient({
       transport: {
         type: "sse",
         url,

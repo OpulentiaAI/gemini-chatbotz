@@ -1,4 +1,4 @@
-import { convertToCoreMessages, streamText } from "ai";
+import { convertToModelMessages, streamText } from "ai";
 import { z } from "zod";
 
 import { geminiProModel } from "@/ai";
@@ -58,8 +58,12 @@ export async function POST(request: Request) {
     });
     */
 
-    const coreMessages = convertToCoreMessages(messages).filter(
-      (message) => message.content.length > 0,
+    const allCoreMessages = await convertToModelMessages(messages);
+    const coreMessages = allCoreMessages.filter(
+      (message: { content: string | unknown[] }) =>
+        typeof message.content === 'string'
+          ? message.content.length > 0
+          : Array.isArray(message.content) && message.content.length > 0,
     );
     console.log('Core messages:', JSON.stringify(coreMessages, null, 2));
 
@@ -280,7 +284,7 @@ export async function POST(request: Request) {
     return result.toTextStreamResponse({});
   } catch (error) {
     console.error('Chat API error:', error);
-    return new Response(`Internal Server Error: ${error.message}`, {
+    return new Response(`Internal Server Error: ${(error as Error).message}`, {
       status: 500,
       headers: { 'Content-Type': 'text/plain' },
     });

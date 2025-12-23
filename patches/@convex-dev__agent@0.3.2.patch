@@ -1,7 +1,103 @@
+diff --git a/dist/UIMessages.js b/dist/UIMessages.js
+index 5587d5c31ece02a2705c1e5c9ce2d9ffee5afcb1..4727f6f5ac28f363ab8af138dab220498529650f 100644
+--- a/dist/UIMessages.js
++++ b/dist/UIMessages.js	
+@@ -1,4 +1,81 @@
+-import { convertToModelMessages, } from "ai";
++// AI SDK 6 compatibility: synchronous message converter
++// convertToModelMessages is async in AI SDK 6, so we implement a sync version
++function convertToModelMessagesSync(messages) {
++    return messages.flatMap((message) => {
++        const role = message.role;
++        const parts = message.parts || [];
++
++        // Separate tool-result parts from other content
++        const toolResults = [];
++        const otherContent = [];
++
++        for (const part of parts) {
++            if (part.type === 'tool-result') {
++                toolResults.push(part);
++            } else {
++                otherContent.push(part);
++            }
++        }
++
++        const result = [];
++
++        // Create main message content
++        const content = otherContent.map((part) => {
++            switch (part.type) {
++                case 'text':
++                    return { type: 'text', text: part.text || '' };
++                case 'image':
++                    return {
++                        type: 'image',
++                        image: part.image || part.url,
++                        mediaType: part.mediaType || part.mimeType,
++                    };
++                case 'file':
++                    return {
++                        type: 'file',
++                        data: part.data || part.url,
++                        mediaType: part.mediaType || part.mimeType,
++                        filename: part.filename,
++                    };
++                case 'tool-invocation':
++                case 'tool-call':
++                    return {
++                        type: 'tool-call',
++                        toolCallId: part.toolCallId,
++                        toolName: part.toolName,
++                        input: part.args || part.input,
++                        providerExecuted: part.providerExecuted,
++                    };
++                case 'reasoning':
++                    return {
++                        type: 'reasoning',
++                        text: part.text || '',
++                        signature: part.signature,
++                    };
++                default:
++                    return part;
++            }
++        }).filter(p => p !== undefined);
++
++        if (content.length > 0 || role !== 'tool') {
++            result.push({ role, content });
++        }
++
++        // Add tool results as separate tool message
++        if (toolResults.length > 0) {
++            const toolContent = toolResults.map((part) => ({
++                type: 'tool-result',
++                toolCallId: part.toolCallId,
++                toolName: part.toolName,
++                output: part.result || part.output,
++            }));
++            result.push({ role: 'tool', content: toolContent });
++        }
++
++        return result;
++    });
++}
++
+ import { toModelMessage, fromModelMessage, toUIFilePart } from "./mapping.js";
+ import { extractReasoning, extractText, isTool, joinText, sorted, } from "./shared.js";
+ import { omit, pick } from "convex-helpers";
+@@ -28,7 +105,7 @@ export function fromUIMessages(messages, meta) {
+             _id: uiMessage.id,
+             tool: false,
+         };
+-        const modelMessages = convertToModelMessages([uiMessage]);
++        const modelMessages = convertToModelMessagesSync([uiMessage]);
+         return modelMessages
+             .map((modelMessage, i) => {
+             if (modelMessage.content.length === 0) {
 diff --git a/dist/mapping.js b/dist/mapping.js
-index 7421fea4172d78a8dd4180f5c9f1017791006990..ce3d1e44d06f8ed2cb0f057e9c8f20b4d1663e73 100644
+index 7421fea4172d78a8dd4180f5c9f1017791006990..bb576c994971b100efe62c358934bbac976c8b06 100644
 --- a/dist/mapping.js
-+++ b/dist/mapping.js
++++ b/dist/mapping.js	
 @@ -204,11 +204,13 @@ export async function serializeContent(ctx, component, content) {
              }
              case "tool-call": {
@@ -28,51 +124,39 @@ index 7421fea4172d78a8dd4180f5c9f1017791006990..ce3d1e44d06f8ed2cb0f057e9c8f20b4
                      ...metadata,
                  };
              }
-@@ -274,22 +278,30 @@ export function fromModelMessageContent(content) {
+@@ -273,23 +277,29 @@ export function fromModelMessageContent(content) {
+                     mimeType: getMimeOrMediaType(part),
                      ...metadata,
                  };
-             case "tool-call":
--                return {
--                    type: part.type,
--                    args: part.input ?? null,
--                    toolCallId: part.toolCallId,
--                    toolName: part.toolName,
--                    providerExecuted: part.providerExecuted,
--                    ...metadata,
--                };
-+                return (() => {
-+                    const signature = part.signature ?? part.thought_signature ?? part.thoughtSignature;
-+                    return {
-+                        type: part.type,
-+                        args: part.input ?? null,
-+                        toolCallId: part.toolCallId,
-+                        toolName: part.toolName,
-+                        ...(signature ? { signature } : {}),
-+                        providerExecuted: part.providerExecuted,
-+                        ...metadata,
-+                    };
-+                })();
+-            case "tool-call":
++            case "tool-call": {
++                const signature = part.signature ?? part.thought_signature ?? part.thoughtSignature;
+                 return {
+                     type: part.type,
+                     args: part.input ?? null,
+                     toolCallId: part.toolCallId,
+                     toolName: part.toolName,
++                    ...(signature ? { signature } : {}),
+                     providerExecuted: part.providerExecuted,
+                     ...metadata,
+                 };
++            }
              case "tool-result":
                  return normalizeToolResult(part, metadata);
-             case "reasoning":
--                return {
--                    type: part.type,
--                    text: part.text,
--                    ...metadata,
--                };
-+                return (() => {
-+                    const signature = part.signature ?? part.thought_signature ?? part.thoughtSignature;
-+                    return {
-+                        type: part.type,
-+                        text: part.text,
-+                        ...(signature ? { signature } : {}),
-+                        ...metadata,
-+                    };
-+                })();
+-            case "reasoning":
++            case "reasoning": {
++                const signature = part.signature ?? part.thought_signature ?? part.thoughtSignature;
+                 return {
+                     type: part.type,
+                     text: part.text,
++                    ...(signature ? { signature } : {}),
+                     ...metadata,
+                 };
++            }
              // Not in current generation output, but could be in historical messages
              default:
                  return part;
-@@ -332,11 +344,13 @@ export function toModelMessageContent(content) {
+@@ -332,11 +342,13 @@ export function toModelMessageContent(content) {
                  };
              case "tool-call": {
                  const input = "input" in part ? part.input : part.args;
@@ -86,31 +170,27 @@ index 7421fea4172d78a8dd4180f5c9f1017791006990..ce3d1e44d06f8ed2cb0f057e9c8f20b4
                      providerExecuted: part.providerExecuted,
                      ...metadata,
                  };
-@@ -345,11 +359,15 @@ export function toModelMessageContent(content) {
+@@ -344,12 +356,15 @@ export function toModelMessageContent(content) {
+             case "tool-result": {
                  return normalizeToolResult(part, metadata);
              }
-             case "reasoning":
--                return {
--                    type: part.type,
--                    text: part.text,
--                    ...metadata,
--                };
-+                return (() => {
-+                    const signature = part.signature ?? part.thought_signature ?? part.thoughtSignature;
-+                    return {
-+                        type: part.type,
-+                        text: part.text,
-+                        ...(signature ? { signature } : {}),
-+                        ...metadata,
-+                    };
-+                })();
+-            case "reasoning":
++            case "reasoning": {
++                const signature = part.signature ?? part.thought_signature ?? part.thoughtSignature;
+                 return {
+                     type: part.type,
+                     text: part.text,
++                    ...(signature ? { signature } : {}),
+                     ...metadata,
+                 };
++            }
              case "redacted-reasoning":
                  // TODO: should we just drop this?
                  return {
 diff --git a/dist/validators.js b/dist/validators.js
-index eea4672fa52e42821388afbe19707e91cd9bde92..97117d3676a3dbee337c82e48aff30618d1ca2eb 100644
+index eea4672fa52e42821388afbe19707e91cd9bde92..6ac391434028eebdc2d08bebb379f70e279b943a 100644
 --- a/dist/validators.js
-+++ b/dist/validators.js
++++ b/dist/validators.js	
 @@ -70,6 +70,7 @@ export const vToolCallPart = v.object({
      toolCallId: v.string(),
      toolName: v.string(),

@@ -73,7 +73,6 @@ export const SnippetCopyButton = ({
 
   if (asChild) {
     return cloneElement(children as ReactElement, {
-      // @ts-expect-error - we know this is a button
       onClick: copyToClipboard,
     });
   }

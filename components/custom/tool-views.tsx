@@ -430,7 +430,7 @@ function WeatherView({ args, result, isLoading }: { args: Record<string, unknown
       {isLoading && <LoadingBar />}
       {result && (result as { current?: { temperature_2m?: number } }).current && (
         <div className="text-sm text-chocolate-700 dark:text-chocolate-300">
-          <span className="font-semibold">{(result as { current?: { temperature_2m?: number } }).current.temperature_2m}°C</span>
+          <span className="font-semibold">{(result as { current?: { temperature_2m?: number } }).current?.temperature_2m}°C</span>
         </div>
       )}
     </div>

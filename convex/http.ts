@@ -30,8 +30,9 @@ http.route({
 
     try {
       const { thread } = await flightAgent.continueThread(ctx, { threadId });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = await thread.streamText(
-        { prompt },
+        { prompt } as any,
         { saveStreamDeltas: { returnImmediately: true } }
       );
 
@@ -61,8 +62,9 @@ http.route({
 
     try {
       const { thread } = await flightAgent.continueThread(ctx, { threadId });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = await thread.streamText(
-        { prompt },
+        { prompt } as any,
         { saveStreamDeltas: { returnImmediately: true, throttleMs: 50 } }
       );
 
