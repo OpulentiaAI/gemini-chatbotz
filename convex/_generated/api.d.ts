@@ -11,6 +11,7 @@
 import type * as actions from "../actions.js";
 import type * as agent from "../agent.js";
 import type * as auth from "../auth.js";
+import type * as browserbase from "../browserbase.js";
 import type * as chat from "../chat.js";
 import type * as chatDb from "../chatDb.js";
 import type * as cortexFacts from "../cortexFacts.js";
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   actions: typeof actions;
   agent: typeof agent;
   auth: typeof auth;
+  browserbase: typeof browserbase;
   chat: typeof chat;
   chatDb: typeof chatDb;
   cortexFacts: typeof cortexFacts;

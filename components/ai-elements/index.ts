@@ -139,3 +139,36 @@ export {
   type TaskItemProps,
   type TaskItemFileProps,
 } from "./task";
+
+// Browserbase Preview components
+export {
+  BrowserbasePreview,
+  BrowserbasePreviewHeader,
+  BrowserbasePreviewNavigation,
+  BrowserbasePreviewBody,
+  BrowserbasePreviewToolView,
+  useBrowserbasePreview,
+  type BrowserbasePreviewProps,
+  type BrowserbasePreviewHeaderProps,
+  type BrowserbasePreviewNavigationProps,
+  type BrowserbasePreviewBodyProps,
+  type BrowserbasePreviewToolViewProps,
+  type BrowserbaseSessionStatus,
+  type BrowserbasePreviewContextValue,
+} from "./browserbase-preview";
+
+// Web Preview components
+export {
+  WebPreview,
+  WebPreviewNavigation,
+  WebPreviewNavigationButton,
+  WebPreviewUrl,
+  WebPreviewBody,
+  WebPreviewConsole,
+  type WebPreviewProps,
+  type WebPreviewNavigationProps,
+  type WebPreviewNavigationButtonProps,
+  type WebPreviewUrlProps,
+  type WebPreviewBodyProps,
+  type WebPreviewConsoleProps,
+} from "./web-preview";
