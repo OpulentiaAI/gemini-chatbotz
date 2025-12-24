@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { OPENROUTER_MODELS, type OpenRouterModelId, type ModelDefinition } from "@/lib/ai/openrouter";
 import { useArtifact } from "@/hooks/use-artifact";
 import { MCPSettings } from "@/components/custom/mcp-settings";
+import { toast } from "sonner";
 
 type PromptInputProps = {
   onSubmit: (value: string, attachments?: File[], modelId?: OpenRouterModelId) => void;
@@ -169,16 +170,25 @@ function RichTextEditor({
   );
 
   const handleImageClick = () => {
+    if (!currentModel?.capabilities.vision) {
+      toast.error(`${currentModel?.name || "This model"} does not support image input. Please select a vision-capable model.`);
+      return;
+    }
     fileInputRef.current?.click();
   };
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
+      if (!currentModel?.capabilities.vision) {
+        toast.error(`${currentModel?.name || "This model"} does not support image input. Please select a vision-capable model.`);
+        e.target.value = "";
+        return;
+      }
       setAttachments((prev) => [...prev, ...files]);
     }
     e.target.value = "";
-  }, []);
+  }, [currentModel]);
 
   // Open empty code artifact (cursor-like behavior)
   const handleCursorClick = useCallback(() => {
@@ -205,20 +215,6 @@ function RichTextEditor({
     });
   }, [openArtifact]);
 
-  useEffect(() => {
-    const handleClick = (e: Event) => {
-      const target = e.target as HTMLElement;
-      if (contentEditableRef.current?.contains(target)) {
-        contentEditableRef.current.focus();
-      }
-    };
-    const wrapper = contentEditableRef.current?.closest('[role="presentation"]');
-    if (wrapper) {
-      wrapper.addEventListener("click", handleClick);
-      return () => wrapper.removeEventListener("click", handleClick);
-    }
-  }, []);
-
   const modelButtonClass =
     "inline-flex min-w-0 items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50";
   const optionsButtonClass =
@@ -242,7 +238,7 @@ function RichTextEditor({
             isDisabled && "opacity-60"
           )}
         >
-          <div role="presentation" className="relative cursor-text overflow-hidden">
+          <div role="presentation" className="relative overflow-hidden">
             <input
               ref={fileInputRef}
               accept="image/*,.jpeg,.jpg,.png,.webp,.svg,.pdf,application/pdf"
@@ -274,6 +270,27 @@ function RichTextEditor({
                   onKeyDown={handleKeyDown}
                   onFocus={() => setIsFocused(true)}
                   onBlur={() => setIsFocused(false)}
+                  onPaste={(e) => {
+                    const items = e.clipboardData?.items;
+                    if (items) {
+                      const imageFiles: File[] = [];
+                      for (const item of items) {
+                        if (item.kind === "file" && item.type.startsWith("image/")) {
+                          const file = item.getAsFile();
+                          if (file) imageFiles.push(file);
+                        }
+                      }
+                      if (imageFiles.length > 0) {
+                        if (!currentModel?.capabilities.vision) {
+                          e.preventDefault();
+                          toast.error(`${currentModel?.name || "This model"} does not support image input.`);
+                          return;
+                        }
+                        e.preventDefault();
+                        setAttachments((prev) => [...prev, ...imageFiles]);
+                      }
+                    }
+                  }}
                   suppressContentEditableWarning
                 />
               </div>

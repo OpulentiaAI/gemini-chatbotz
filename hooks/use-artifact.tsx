@@ -150,14 +150,10 @@ export function useArtifact() {
   }, [setArtifact]);
 
   const closeArtifact = useCallback(() => {
-    setArtifact((currentArtifact) =>
-      currentArtifact.status === "streaming"
-        ? {
-            ...currentArtifact,
-            isVisible: false,
-          }
-        : { ...initialArtifactData, status: "idle" }
-    );
+    setArtifact(() => ({
+      ...initialArtifactData,
+      status: "idle",
+    }));
   }, [setArtifact]);
 
   const openArtifact = useCallback(

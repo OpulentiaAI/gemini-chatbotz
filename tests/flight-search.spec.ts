@@ -1,9 +1,10 @@
 import { test, expect } from "@playwright/test";
 
+const DEV_URL = process.env.DEV_URL || "http://localhost:3002";
+
 test.describe("Flight Search with OpenRouter", () => {
   test("should search for flights using DeepSeek V3.2", async ({ page }) => {
-    // Navigate to the app
-    await page.goto("http://localhost:3001");
+    await page.goto(DEV_URL);
     
     // Wait for the page to load
     await page.waitForLoadState("networkidle");

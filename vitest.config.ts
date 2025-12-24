@@ -1,9 +1,9 @@
 import { defineConfig } from "vitest/config";
+import playwright from "@playwright/test";
 
 export default defineConfig({
   test: {
-    environment: "node",
-    include: ["convex/**/*.spec.ts"],
+    include: ["convex/**/*.spec.ts", "tests/**/*.spec.ts"],
     globals: true,
   },
 });
