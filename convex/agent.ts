@@ -18,8 +18,10 @@ type OpenRouterModelId =
   | "anthropic/claude-3-opus"
   | "anthropic/claude-3-haiku"
   | "anthropic/claude-opus-4.5"
+  | "google/gemini-2.5-flash"
+  | "google/gemini-2.5-pro"
+  | "google/gemini-2.0-flash-001"
   | "google/gemini-3-flash-preview"
-  | "google/gemini-pro-1.5"
   | "google/gemini-3-pro-preview"
   | "meta-llama/llama-3.1-70b-instruct"
   | "meta-llama/llama-3.1-405b-instruct"
@@ -1526,19 +1528,11 @@ export function createAgentWithModel(modelId: OpenRouterModelId) {
   // Gemini 3 models support "thinking". When tool calling is enabled, Google requires
   // thought signatures to be preserved across steps; we rely on a pnpm patch that
   // preserves signature fields in @convex-dev/agent's message serialization.
-  const isGemini3 = modelId.includes("gemini-3");
   const isGeminiFlash = modelId === "google/gemini-3-flash-preview";
-  const isGeminiModel = modelId.startsWith("google/gemini");
   const isMinimax = modelId.startsWith("minimax/");
 
-  // For Gemini 3 models, explicitly enable thinking.
-  const languageModel = isGemini3
-    ? openrouter(modelId, {
-      extraBody: {
-        thinking: { type: "enabled" },
-      },
-    })
-    : openrouter(modelId);
+  // OpenRouter doesn't support Gemini thinking param - use standard model.
+  const languageModel = openrouter(modelId);
 
   // MiniMax models - include coding and search tools, exclude complex multi-step flight tools
   const minimaxTools = {
@@ -1594,20 +1588,18 @@ You are running on Gemini 3 Flash.
 </model_constraints>`
         : baseInstructions,
     tools,
-    // MiniMax: 5 steps max, Gemini Flash: 64, Other Gemini: 64, Others: 10
-    maxSteps: isMinimax ? 5 : (isGeminiFlash ? 64 : (isGeminiModel ? 64 : 10)),
+    // MiniMax: 5 steps max, all others: 64 to support iterative search
+    maxSteps: isMinimax ? 5 : 64,
   });
 }
 
 export const flightAgent: Agent = new Agent(components.agent, {
   name: "Flight Booking Agent",
-  // Enable Gemini thinking (signatures preserved via patched dependency).
-  languageModel: openrouter("google/gemini-3-flash-preview", {
-    extraBody: { thinking: { type: "enabled" } },
-  }),
+  // Use stable Gemini 2.5 Flash for reliable performance.
+  languageModel: openrouter("google/gemini-2.5-flash"),
   instructions: baseInstructions,
   tools: baseTools,
-  maxSteps: 10,
+  maxSteps: 64,
 });
 
 export const codeAgent: Agent = new Agent(components.agent, {
@@ -1664,14 +1656,14 @@ When explaining code:
     createDocument: baseTools.createDocument,
     updateDocument: baseTools.updateDocument,
   },
-  maxSteps: 5,
+  maxSteps: 64,
 });
 
 export const quickAgent: Agent = new Agent(components.agent, {
   name: "Quick Agent",
   languageModel: openrouter("openai/gpt-4o-mini"),
   instructions: "You are a helpful assistant. Keep responses concise but informative.",
-  maxSteps: 5,
+  maxSteps: 64,
 });
 
 export const researchAgent: Agent = new Agent(components.agent, {
@@ -1720,5 +1712,5 @@ When investigating complex questions:
     webSearch: baseTools.webSearch,
     createDocument: baseTools.createDocument,
   },
-  maxSteps: 8,
+  maxSteps: 64,
 });
