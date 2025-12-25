@@ -8,8 +8,20 @@ import postgres from "postgres";
 
 import { chat, reservation } from "./schema";
 
-let client = postgres(`${process.env.POSTGRES_URL!}?sslmode=require`);
-let db = drizzle(client);
+// Lazy initialization - only connect if POSTGRES_URL is defined
+let client: postgres.Sql | null = null;
+let dbInstance: ReturnType<typeof drizzle> | null = null;
+
+function getDb() {
+  if (!process.env.POSTGRES_URL) {
+    return null;
+  }
+  if (!client) {
+    client = postgres(`${process.env.POSTGRES_URL}?sslmode=require`);
+    dbInstance = drizzle(client);
+  }
+  return dbInstance;
+}
 
 export async function saveChat({
   id,
@@ -20,6 +32,11 @@ export async function saveChat({
   messages: any;
   userId: string;
 }) {
+  const db = getDb();
+  if (!db) {
+    console.warn("Database not configured, skipping saveChat");
+    return null;
+  }
   try {
     const selectedChats = await db.select().from(chat).where(eq(chat.id, id));
 
@@ -45,6 +62,11 @@ export async function saveChat({
 }
 
 export async function deleteChatById({ id }: { id: string }) {
+  const db = getDb();
+  if (!db) {
+    console.warn("Database not configured, skipping deleteChatById");
+    return null;
+  }
   try {
     return await db.delete(chat).where(eq(chat.id, id));
   } catch (error) {
@@ -54,6 +76,11 @@ export async function deleteChatById({ id }: { id: string }) {
 }
 
 export async function getChatsByUserId({ id }: { id: string }) {
+  const db = getDb();
+  if (!db) {
+    console.warn("Database not configured, returning empty array");
+    return [];
+  }
   try {
     return await db
       .select()
@@ -67,6 +94,11 @@ export async function getChatsByUserId({ id }: { id: string }) {
 }
 
 export async function getChatById({ id }: { id: string }) {
+  const db = getDb();
+  if (!db) {
+    console.warn("Database not configured, returning null");
+    return null;
+  }
   try {
     const [selectedChat] = await db.select().from(chat).where(eq(chat.id, id));
     return selectedChat;
@@ -86,6 +118,11 @@ export async function createReservation({
   userId: string;
   details: any;
 }) {
+  const db = getDb();
+  if (!db) {
+    console.warn("Database not configured, skipping createReservation");
+    return null;
+  }
   return await db.insert(reservation).values({
     id,
     createdAt: new Date(),
@@ -96,6 +133,11 @@ export async function createReservation({
 }
 
 export async function getReservationById({ id }: { id: string }) {
+  const db = getDb();
+  if (!db) {
+    console.warn("Database not configured, returning null");
+    return null;
+  }
   const [selectedReservation] = await db
     .select()
     .from(reservation)
@@ -111,6 +153,11 @@ export async function updateReservation({
   id: string;
   hasCompletedPayment: boolean;
 }) {
+  const db = getDb();
+  if (!db) {
+    console.warn("Database not configured, skipping updateReservation");
+    return null;
+  }
   return await db
     .update(reservation)
     .set({
