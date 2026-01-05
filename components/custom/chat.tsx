@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { motion } from "framer-motion";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useUIMessages } from "@convex-dev/agent/react";
@@ -367,20 +368,26 @@ export function Chat({
           </Link>
         </div>
       )}
-      
-      {/* Mobile: Toggle between chat and artifact (no split) */}
-      <div className={cn(
-        "flex-1 overflow-hidden md:hidden",
-        isArtifactVisible && "hidden"
-      )}>
-        {MessagesContent}
-      </div>
-      
-      <div className={cn(
-        "flex-1 overflow-hidden md:hidden",
-        !isArtifactVisible && "hidden"
-      )}>
-        <ArtifactPanel />
+
+      {/* Mobile: Stack chat and artifact with slide transition */}
+      <div className="flex-1 overflow-hidden md:hidden relative">
+        <motion.div
+          className="absolute inset-0"
+          initial={false}
+          animate={{ x: isArtifactVisible ? "-100%" : "0%" }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        >
+          {MessagesContent}
+        </motion.div>
+
+        <motion.div
+          className="absolute inset-0"
+          initial={false}
+          animate={{ x: isArtifactVisible ? "0%" : "100%" }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        >
+          <ArtifactPanel />
+        </motion.div>
       </div>
 
       {/* Desktop: Full width when no artifact */}

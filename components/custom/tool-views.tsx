@@ -616,11 +616,16 @@ function DocumentView({ args, result, isLoading }: { args: Record<string, unknow
   const resultData = result as { id?: string; title?: string; kind?: string; content?: string; message?: string } | undefined;
   const { openArtifact } = useArtifact();
   const hasAutoOpened = useRef(false);
-  
+
   // Get language from title (e.g., "script.py" -> "python")
   const language = kind === "code" ? getLanguageFromTitle(title) : undefined;
   // Use content from result first, then fall back to args
   const finalContent = resultData?.content || content;
+
+  // Reset auto-open flag when documentId changes
+  useEffect(() => {
+    hasAutoOpened.current = false;
+  }, [resultData?.id]);
 
   // Auto-open artifact when document is created/updated
   useEffect(() => {

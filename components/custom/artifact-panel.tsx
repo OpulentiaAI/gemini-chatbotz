@@ -141,15 +141,15 @@ function isSandboxSupported(language: string): boolean {
 }
 
 // Code Editor Component with Kibo UI
-function CodeContent({ 
-  content, 
-  language, 
+function CodeContent({
+  content,
+  language,
   title,
   onSave,
   isReadonly = false,
   documentId,
-}: { 
-  content: string; 
+}: {
+  content: string;
   language: string;
   title?: string;
   onSave?: (content: string) => void;
@@ -163,7 +163,7 @@ function CodeContent({
 
   useEffect(() => {
     setLocalContent(content);
-  }, [content]);
+  }, [content, documentId]);
 
   const shikiLang = mapToShikiLanguage(language);
   const canPreview = isSandboxSupported(language);
