@@ -7,6 +7,7 @@ import type { Agent } from "@convex-dev/agent";
 import { internal, api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { initBraintrust, traceMessage } from "../lib/braintrust";
+import { DEFAULT_MODEL } from "../lib/ai/openrouter";
 
 // Helper to validate if threadId is a valid Convex ID format (not a UUID)
 function isValidConvexThreadId(threadId: string): boolean {
@@ -45,7 +46,8 @@ const modelValidator = v.optional(v.union(
   v.literal("z-ai/glm-4.6"),
   v.literal("z-ai/glm-4.6v"),
   v.literal("z-ai/glm-4.7"),
-  v.literal("qwen/qwen3-vl-235b-a22b-instruct")
+  v.literal("qwen/qwen3-vl-235b-a22b-instruct"),
+  v.literal("accounts/fireworks/models/minimax-m2p1")
 ));
 
 // File attachment validator for PDF, images, etc.
@@ -103,7 +105,7 @@ async function preAnalyzeFiles(
 }
 
 function selectAgent(modelId?: string): Agent {
-  if (!modelId) return flightAgent;
+  if (!modelId) return createAgentWithModel(DEFAULT_MODEL);
   if (modelId.includes("gpt-4o-mini")) return quickAgent;
   return createAgentWithModel(modelId as any);
 }

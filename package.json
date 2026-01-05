@@ -19,6 +19,7 @@
     "test:memory": "vitest run convex/cortexMemories.spec.ts"
   },
   "dependencies": {
+    "@ai-sdk/fireworks": "^2.0.3",
     "@ai-sdk/google": "^3.0.1",
     "@ai-sdk/mcp": "^1.0.1",
     "@ai-sdk/openai": "^3.0.1",

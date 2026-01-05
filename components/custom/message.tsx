@@ -8,18 +8,29 @@ import { Streamdown } from "streamdown";
 import { BotIcon, UserIcon } from "./icons";
 import { PreviewAttachment } from "./preview-attachment";
 import { ToolView } from "./tool-views";
+import { 
+  ThreadImageGallery, 
+  extractImageAttachments,
+  extractImageParts,
+  type ThreadImageItem 
+} from "./thread-image";
 import { Reasoning, ReasoningTrigger, ReasoningContent } from "../ai-elements/reasoning";
 import { StreamingIndicator } from "../ai-elements/thinking-message";
 import BlurFade from "../ui/blur-fade";
 
 // Types for attachments and tool invocations
 interface MessageAttachment {
-  url: string;
+  url?: string;
   name?: string;
   contentType?: string;
+  fileName?: string;
+  mediaType?: string;
+  base64?: string;
+  payload?: string;
+  file_id?: string;
 }
 
-// Message part from @convex-dev/agent - can be text, tool, or reasoning
+// Message part from @convex-dev/agent - can be text, tool, reasoning, or image
 interface MessagePart {
   type: string;
   text?: string;
@@ -27,6 +38,11 @@ interface MessagePart {
   state?: string;
   input?: Record<string, unknown>;
   output?: unknown;
+  // Image part fields
+  image?: string;
+  data?: string;
+  mimeType?: string;
+  url?: string;
 }
 
 // Tool invocation format from @convex-dev/agent
@@ -131,10 +147,33 @@ export const Message = memo(({
           </BlurFade>
         );
       }
+
+      // Image part - inline images in message content
+      if (part.type === "image" || part.type?.startsWith("image/")) {
+        const imageItems = extractImageParts([part]);
+        if (imageItems.length > 0) {
+          return (
+            <BlurFade key={key} delay={index * 0.05}>
+              <ThreadImageGallery items={imageItems} />
+            </BlurFade>
+          );
+        }
+      }
       
       return null;
     });
   };
+
+  // Extract image attachments from the attachments array
+  const imageAttachments = extractImageAttachments(attachments);
+  
+  // Filter non-image attachments for PreviewAttachment
+  const nonImageAttachments = attachments?.filter(att => {
+    const type = att.contentType || att.mediaType || "";
+    const name = att.name || att.fileName || "";
+    const isImage = type.startsWith("image/") || /\.(png|jpe?g|gif|webp)$/i.test(name);
+    return !isImage;
+  }) || [];
 
   return (
     <motion.div
@@ -150,11 +189,21 @@ export const Message = memo(({
         {/* Render all parts in order - text, tools, and reasoning interleaved */}
         {renderParts()}
 
-        {/* Attachments */}
-        {attachments && attachments.length > 0 && (
-          <div className="flex flex-row gap-2">
-            {attachments.map((attachment) => (
-              <PreviewAttachment key={attachment.url} attachment={attachment} />
+        {/* Image Attachments - rendered using AI Elements Image component */}
+        {imageAttachments.length > 0 && (
+          <BlurFade delay={0.1}>
+            <ThreadImageGallery items={imageAttachments} className="mt-2" />
+          </BlurFade>
+        )}
+
+        {/* Non-image Attachments (PDFs, documents, etc.) */}
+        {nonImageAttachments.length > 0 && (
+          <div className="flex flex-row gap-2 mt-2">
+            {nonImageAttachments.map((attachment, idx) => (
+              <PreviewAttachment 
+                key={attachment.url || attachment.file_id || `att-${idx}`} 
+                attachment={attachment as any} 
+              />
             ))}
           </div>
         )}

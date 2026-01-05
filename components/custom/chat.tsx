@@ -189,6 +189,12 @@ export function Chat({
   const handleSubmit = useCallback(
     async (value: string, attachments?: File[], modelId?: OpenRouterModelId) => {
       if (!value.trim() && (!attachments || attachments.length === 0)) return;
+      
+      // Wait for session to load to ensure correct userId is used
+      if (isSessionLoading) {
+        toast.info("Please wait, loading your session...");
+        return;
+      }
 
       setIsLoading(true);
       abortControllerRef.current = new AbortController();
@@ -252,7 +258,7 @@ export function Chat({
         abortControllerRef.current = null;
       }
     },
-    [threadId, createThread, streamMessage, effectiveUserId, selectedModel, uploadFiles]
+    [threadId, createThread, streamMessage, effectiveUserId, selectedModel, uploadFiles, isSessionLoading]
   );
 
   const handleStop = useCallback(() => {
@@ -298,13 +304,16 @@ export function Chat({
             // Cast message to access id and parts properties
             const msg = message as any;
 
+            // Extract attachments from message data if present
+            const messageAttachments = msg.attachments || msg.files || msg.images || [];
+            
             return (
               <PreviewMessage
                 key={msg.id || index}
                 chatId={threadId || id}
                 role={message.role}
                 parts={msg.parts}
-                attachments={[]}
+                attachments={messageAttachments}
                 isStreaming={messageIsStreaming}
               />
             );

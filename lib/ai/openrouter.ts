@@ -52,7 +52,8 @@ export type OpenRouterModelId =
   | "z-ai/glm-4.6"
   | "z-ai/glm-4.6v"
   | "z-ai/glm-4.7"
-  | "qwen/qwen3-vl-235b-a22b-instruct";
+  | "qwen/qwen3-vl-235b-a22b-instruct"
+  | "accounts/fireworks/models/minimax-m2p1";
 
 export interface ModelDefinition {
   id: OpenRouterModelId;
@@ -355,9 +356,19 @@ export const OPENROUTER_MODELS: ModelDefinition[] = [
     pricing: { prompt: 0.0, completion: 0.0 },
     capabilities: { vision: true, functionCalling: true, streaming: true },
   },
+  {
+    id: "accounts/fireworks/models/minimax-m2p1",
+    name: "MiniMax M2.1 (Fireworks)",
+    provider: "Fireworks",
+    description: "228B parameter model via Fireworks - optimized for real-world performance across complex, multi-language, and agent-driven workflows with robust tool and agent scaffolding",
+    contextLength: 200000,
+    maxOutput: 25600,
+    pricing: { prompt: 0.0003, completion: 0.0012 },
+    capabilities: { functionCalling: true, streaming: true },
+  },
 ];
 
-export const DEFAULT_MODEL: OpenRouterModelId = "moonshotai/kimi-k2-thinking";
+export const DEFAULT_MODEL: OpenRouterModelId = "accounts/fireworks/models/minimax-m2p1";
 export const DEFAULT_FAST_MODEL: OpenRouterModelId = "openai/gpt-4o-mini";
 export const DEFAULT_ARTIFACT_MODEL: OpenRouterModelId = "anthropic/claude-3.5-sonnet";
 

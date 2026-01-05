@@ -1,6 +1,7 @@
 import { Agent, createTool } from "@convex-dev/agent";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createOpenAI } from "@ai-sdk/openai";
+import { createFireworks } from "@ai-sdk/fireworks";
 import { components, internal, api } from "./_generated/api";
 import { z } from "zod";
 
@@ -11,6 +12,10 @@ const openrouter = createOpenRouter({
 const nvidia = createOpenAI({
   baseURL: "https://integrate.api.nvidia.com/v1",
   apiKey: process.env.NVIDIA_API_KEY,
+});
+
+const fireworks = createFireworks({
+  apiKey: process.env.FIREWORKS_API_KEY,
 });
 
 const artifactKinds = ["text", "code", "sheet"] as const;
@@ -45,7 +50,8 @@ type OpenRouterModelId =
   | "z-ai/glm-4.6"
   | "z-ai/glm-4.6v"
   | "z-ai/glm-4.7"
-  | "qwen/qwen3-vl-235b-a22b-instruct";
+  | "qwen/qwen3-vl-235b-a22b-instruct"
+  | "accounts/fireworks/models/minimax-m2p1";
 
 const baseInstructions = `
 <core_identity>
@@ -1536,13 +1542,16 @@ export function createAgentWithModel(modelId: OpenRouterModelId) {
   // thought signatures to be preserved across steps; we rely on a pnpm patch that
   // preserves signature fields in @convex-dev/agent's message serialization.
   const isGeminiFlash = modelId === "google/gemini-3-flash-preview";
-  const isMinimax = modelId.startsWith("minimax/");
+  const isMinimax = modelId.startsWith("minimax/") || modelId.startsWith("accounts/fireworks/models/minimax");
   const isNvidiaKimi = modelId === "moonshotai/kimi-k2-thinking";
+  const isFireworks = modelId.startsWith("accounts/fireworks/models/");
 
-  // Gemini 3 models have built-in thinking - no extra config needed
+  // Route to appropriate provider
   const languageModel = isNvidiaKimi
     ? nvidia.chat(modelId)
-    : openrouter(modelId);
+    : isFireworks
+      ? fireworks(modelId)
+      : openrouter(modelId);
 
   // MiniMax models - include coding and search tools, exclude complex multi-step flight tools
   const minimaxTools = {
