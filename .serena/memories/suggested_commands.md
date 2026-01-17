@@ -1,0 +1,11 @@
+# Suggested commands
+- Install: `pnpm install`
+- Dev (Next only): `pnpm dev`
+- Dev (Convex + Next): `pnpm dev:convex`
+- Build: `pnpm build` or full: `pnpm build:full`
+- Start (prod): `pnpm start`
+- Lint: `pnpm lint`
+- Tests: `pnpm test` / `pnpm test:run` / `pnpm test:memory`
+- Convex: `pnpm convex:dev`, `pnpm convex:deploy`
+- Railway deploy: `railway up --service chat-opulent`
+- Common shell: `ls`, `rg`, `cat`, `sed`, `git status` (Darwin)

@@ -36,6 +36,7 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 import { cn } from "@/lib/utils";
+import { GradientHeading } from "@/components/ui/gradient-heading";
 
 // Helper function to validate Convex thread IDs - MUST be outside component for stability
 // Convex thread IDs are lowercase alphanumeric (e.g. "m57857vxf5zexbj8h5a41448bx7xp9qw")
@@ -372,9 +373,30 @@ export function Chat({
           "z-10 w-full",
           hasMessages
             ? "relative shrink-0"
-            : "flex min-h-0 flex-1 items-center justify-center -mt-12"
+            : "flex min-h-0 flex-1 flex-col items-center justify-center -mt-12"
         )}
       >
+        {/* Opulent Chat heading - only visible in empty state */}
+        <AnimatePresence>
+          {!hasMessages && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20, transition: { duration: 0.2 } }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="mb-8 text-center"
+            >
+              <GradientHeading
+                variant="dark"
+                size="xl"
+                weight="bold"
+                className="font-sans"
+              >
+                Opulent Chat
+              </GradientHeading>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <motion.div
           layout
           transition={{

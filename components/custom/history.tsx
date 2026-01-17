@@ -2,10 +2,11 @@
 
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import cx from "classnames";
+import { Search } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 type MinimalUser = { id?: string | null; email?: string | null };
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -17,6 +18,7 @@ import {
   PencilEditIcon,
   TrashIcon,
 } from "./icons";
+import { SearchChatsDialog } from "./search-chats-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,6 +49,8 @@ export const History = ({ user }: { user?: MinimalUser | null }) => {
   const router = useRouter();
 
   const [isHistoryVisible, setIsHistoryVisible] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [shortcutText, setShortcutText] = useState("Ctrl+K");
   
   // Use Convex query for thread history instead of old /api/history endpoint
   const threads = useQuery(
@@ -60,6 +64,32 @@ export const History = ({ user }: { user?: MinimalUser | null }) => {
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const isMac = navigator.platform.toUpperCase().includes("MAC");
+    setShortcutText(isMac ? "Cmd+K" : "Ctrl+K");
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "k" && (event.metaKey || event.ctrlKey)) {
+        if (!user) return;
+        event.preventDefault();
+        setIsHistoryVisible(true);
+        setIsSearchOpen(true);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [user]);
+
+  useEffect(() => {
+    if (!isHistoryVisible) {
+      setIsSearchOpen(false);
+    }
+  }, [isHistoryVisible]);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -123,6 +153,21 @@ export const History = ({ user }: { user?: MinimalUser | null }) => {
                   <div>Start a new chat</div>
                   <PencilEditIcon size={14} />
                 </Link>
+              </Button>
+            )}
+            {user && (
+              <Button
+                className="mt-2 w-full justify-between text-sm font-normal"
+                variant="outline"
+                onClick={() => setIsSearchOpen(true)}
+              >
+                <span className="flex items-center gap-2">
+                  <Search className="size-4" />
+                  Search chats
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {shortcutText}
+                </span>
               </Button>
             )}
 
@@ -207,6 +252,20 @@ export const History = ({ user }: { user?: MinimalUser | null }) => {
           </div>
         </SheetContent>
       </Sheet>
+
+      {user && (
+        <SearchChatsDialog
+          chats={history}
+          isLoading={isLoading}
+          onOpenChange={setIsSearchOpen}
+          onSelectChat={(chatId) => {
+            setIsHistoryVisible(false);
+            setIsSearchOpen(false);
+            router.push(`/chat/${chatId}`);
+          }}
+          open={isSearchOpen}
+        />
+      )}
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
