@@ -41,6 +41,7 @@ const modelValidator = v.optional(v.union(
   v.literal("x-ai/grok-4.1-fast:free"),
   v.literal("moonshotai/kimi-k2-thinking"),
   v.literal("moonshotai/kimi-k2.5"),
+  v.literal("fireworks/kimi-k2p5"),
   v.literal("prime-intellect/intellect-3"),
   v.literal("minimax/minimax-m2"),
   v.literal("minimax/minimax-m2.1"),
@@ -59,6 +60,7 @@ const modelValidator = v.optional(v.union(
 // Test with a simple string literal
 const testValidator = v.optional(v.union(
   v.literal("moonshotai/kimi-k2.5"),
+  v.literal("fireworks/kimi-k2p5"),
   v.literal("openai/gpt-4o")
 ));
 
