@@ -209,7 +209,7 @@ export const sendMessage = action({
     // Initialize Braintrust (safe no-op if no API key)
     initBraintrust();
 
-    const agent: Agent = modelId ? createAgentWithModel(modelId) : flightAgent;
+    const agent: Agent = modelId ? createAgentWithModel(modelId as any) : flightAgent;
     
     // Validate threadId is a valid Convex ID format (not a UUID)
     // If it's a UUID (legacy format), create a new thread instead
@@ -293,7 +293,7 @@ export const streamMessage = action({
     try {
       initBraintrust();
 
-      const agent: Agent = modelId ? createAgentWithModel(modelId) : flightAgent;
+      const agent: Agent = modelId ? createAgentWithModel(modelId as any) : flightAgent;
       
       // Validate threadId is a valid Convex ID format (not a UUID)
       // If it's a UUID (legacy format), create a new thread instead
