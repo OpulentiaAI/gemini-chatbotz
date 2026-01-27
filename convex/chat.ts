@@ -16,7 +16,7 @@ function isValidConvexThreadId(threadId: string): boolean {
   return /^[a-z0-9]+$/.test(threadId) && !threadId.includes("-");
 }
 
-// Kimi K2.5 model added - deployed 2025-01-27
+// Kimi K2.5 model added - deployed 2025-01-27 - FORCE REDEPLOY
 const modelValidator = v.optional(v.union(
   v.literal("openai/gpt-4o"),
   v.literal("openai/gpt-4o-mini"),
