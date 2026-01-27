@@ -16,46 +16,49 @@ function isValidConvexThreadId(threadId: string): boolean {
   return /^[a-z0-9]+$/.test(threadId) && !threadId.includes("-");
 }
 
-// Kimi K2.5 model added - deployed 2025-01-27 - FORCE REDEPLOY
-const modelValidator = v.optional(v.union(
-  v.literal("openai/gpt-4o"),
-  v.literal("openai/gpt-4o-mini"),
-  v.literal("openai/gpt-4-turbo"),
-  v.literal("openai/gpt-5.2"),
-  v.literal("anthropic/claude-3.5-sonnet"),
-  v.literal("anthropic/claude-3-opus"),
-  v.literal("anthropic/claude-3-haiku"),
-  v.literal("anthropic/claude-opus-4.5"),
-  v.literal("google/gemini-3-flash-preview"),
-  v.literal("google/gemini-2.5-flash"),
-  v.literal("google/gemini-2.5-pro"),
-  v.literal("google/gemini-2.0-flash-001"),
-  v.literal("google/gemini-3-pro-preview"),
-  v.literal("meta-llama/llama-3.1-70b-instruct"),
-  v.literal("meta-llama/llama-3.1-405b-instruct"),
-  v.literal("mistralai/mistral-large"),
-  v.literal("mistralai/mistral-large-2512"),
-  v.literal("deepseek/deepseek-chat"),
-  v.literal("deepseek/deepseek-v3.2"),
-  v.literal("deepseek/deepseek-v3.2-speciale"),
-  v.literal("x-ai/grok-4.1-fast:free"),
-  v.literal("moonshotai/kimi-k2-thinking"),
-  v.literal("moonshotai/kimi-k2.5"),
-  v.literal("fireworks/kimi-k2p5"),
-  v.literal("prime-intellect/intellect-3"),
-  v.literal("minimax/minimax-m2"),
-  v.literal("minimax/minimax-m2.1"),
-  v.literal("x-ai/grok-code-fast-1"),
-  v.literal("z-ai/glm-4.6"),
-  v.literal("z-ai/glm-4.6v"),
-  v.literal("z-ai/glm-4.7"),
-  v.literal("qwen/qwen3-vl-235b-a22b-instruct"),
-  v.literal("accounts/fireworks/models/minimax-m2p1"),
-  v.literal("accounts/fireworks/models/glm-4p7"),
-  // xAI models
-  v.literal("grok-4-1-fast-reasoning"),
-  v.literal("grok-4-1-fast-non-reasoning")
-));
+// Kimi K2.5 model added - deployed 2025-01-27 - FORCE REDEPLOY v3
+// Using string validator to bypass Convex union caching issue
+const modelValidator = v.optional(v.string());
+
+// Whitelist of supported models for runtime validation
+const SUPPORTED_MODELS = new Set([
+  "openai/gpt-4o",
+  "openai/gpt-4o-mini",
+  "openai/gpt-4-turbo",
+  "openai/gpt-5.2",
+  "anthropic/claude-3.5-sonnet",
+  "anthropic/claude-3-opus",
+  "anthropic/claude-3-haiku",
+  "anthropic/claude-opus-4.5",
+  "google/gemini-3-flash-preview",
+  "google/gemini-2.5-flash",
+  "google/gemini-2.5-pro",
+  "google/gemini-2.0-flash-001",
+  "google/gemini-3-pro-preview",
+  "meta-llama/llama-3.1-70b-instruct",
+  "meta-llama/llama-3.1-405b-instruct",
+  "mistralai/mistral-large",
+  "mistralai/mistral-large-2512",
+  "deepseek/deepseek-chat",
+  "deepseek/deepseek-v3.2",
+  "deepseek/deepseek-v3.2-speciale",
+  "x-ai/grok-4.1-fast:free",
+  "moonshotai/kimi-k2-thinking",
+  "moonshotai/kimi-k2.5",
+  "fireworks/kimi-k2p5",
+  "prime-intellect/intellect-3",
+  "minimax/minimax-m2",
+  "minimax/minimax-m2.1",
+  "x-ai/grok-code-fast-1",
+  "z-ai/glm-4.6",
+  "z-ai/glm-4.6v",
+  "z-ai/glm-4.7",
+  "qwen/qwen3-vl-235b-a22b-instruct",
+  "accounts/fireworks/models/minimax-m2p1",
+  "accounts/fireworks/models/glm-4p7",
+  "grok-4-1-fast-reasoning",
+  "grok-4-1-fast-non-reasoning"
+]);
 
 // Test with a simple string literal
 const testValidator = v.optional(v.union(
