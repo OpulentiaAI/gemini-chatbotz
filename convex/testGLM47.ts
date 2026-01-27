@@ -1,11 +1,13 @@
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { createFireworks } from "@ai-sdk/fireworks";
+import { createTogetherAI } from "@ai-sdk/togetherai";
 import { generateText } from "ai";
 import { z } from "zod";
 
+const GLM_47_MODEL = "zai-org/GLM-4.7";
+
 /**
- * Test action to verify GLM-4.7 model works via Fireworks
+ * Test action to verify GLM-4.7 model works via TogetherAI
  * Run via Convex CLI: npx convex run testGLM47:testGLM47Model
  */
 export const testGLM47Model = action({
@@ -13,15 +15,15 @@ export const testGLM47Model = action({
     prompt: v.optional(v.string()),
   },
   handler: async (ctx, { prompt = "Say 'Hello from GLM-4.7!' and explain in one sentence what makes you special." }) => {
-    console.log("[TEST GLM-4.7] Starting test...");
-    console.log("[TEST GLM-4.7] Fireworks API key present:", !!process.env.FIREWORKS_API_KEY);
+    console.log("[TEST GLM-4.7] Starting test via TogetherAI...");
+    console.log("[TEST GLM-4.7] TogetherAI API key present:", !!process.env.TOGETHER_AI_API_KEY);
     
     try {
-      const fireworks = createFireworks({
-        apiKey: process.env.FIREWORKS_API_KEY,
+      const togetherai = createTogetherAI({
+        apiKey: process.env.TOGETHER_AI_API_KEY,
       });
       
-      const model = fireworks("accounts/fireworks/models/glm-4p7");
+      const model = togetherai(GLM_47_MODEL);
       
       console.log("[TEST GLM-4.7] Generating text with prompt:", prompt);
       
@@ -35,7 +37,8 @@ export const testGLM47Model = action({
       
       return {
         success: true,
-        modelId: "accounts/fireworks/models/glm-4p7",
+        modelId: GLM_47_MODEL,
+        provider: "TogetherAI",
         response: result.text,
         usage: result.usage,
         finishReason: result.finishReason,
@@ -52,20 +55,20 @@ export const testGLM47Model = action({
 });
 
 /**
- * Test GLM-4.7 with function calling
+ * Test GLM-4.7 with function calling via TogetherAI
  * Run via Convex CLI: npx convex run testGLM47:testGLM47FunctionCalling
  */
 export const testGLM47FunctionCalling = action({
   args: {},
   handler: async () => {
-    console.log("[TEST GLM-4.7 Function Calling] Starting test...");
+    console.log("[TEST GLM-4.7 Tool Calling] Starting test via TogetherAI...");
     
     try {
-      const fireworks = createFireworks({
-        apiKey: process.env.FIREWORKS_API_KEY,
+      const togetherai = createTogetherAI({
+        apiKey: process.env.TOGETHER_AI_API_KEY,
       });
       
-      const model = fireworks("accounts/fireworks/models/glm-4p7");
+      const model = togetherai(GLM_47_MODEL);
       
       const result = await generateText({
         model,
@@ -83,18 +86,20 @@ export const testGLM47FunctionCalling = action({
         },
       });
       
-      console.log("[TEST GLM-4.7 Function Calling] ✅ Success!");
-      console.log("[TEST GLM-4.7 Function Calling] Response:", result.text);
-      console.log("[TEST GLM-4.7 Function Calling] Tool calls:", result.toolCalls?.length || 0);
+      console.log("[TEST GLM-4.7 Tool Calling] ✅ Success!");
+      console.log("[TEST GLM-4.7 Tool Calling] Response:", result.text);
+      console.log("[TEST GLM-4.7 Tool Calling] Steps:", result.steps?.length || 0);
       
       return {
         success: true,
+        provider: "TogetherAI",
+        modelId: GLM_47_MODEL,
         response: result.text,
-        toolCallsCount: result.toolCalls?.length || 0,
+        stepsCount: result.steps?.length || 0,
         usage: result.usage,
       };
     } catch (error) {
-      console.error("[TEST GLM-4.7 Function Calling] ❌ Error:", error);
+      console.error("[TEST GLM-4.7 Tool Calling] ❌ Error:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),

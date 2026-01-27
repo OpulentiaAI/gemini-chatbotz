@@ -25,6 +25,7 @@ import type * as http from "../http.js";
 import type * as hyperbrowser from "../hyperbrowser.js";
 import type * as mcp from "../mcp.js";
 import type * as reservations from "../reservations.js";
+import type * as sandbox from "../sandbox.js";
 import type * as testGLM47 from "../testGLM47.js";
 import type * as todos from "../todos.js";
 
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   hyperbrowser: typeof hyperbrowser;
   mcp: typeof mcp;
   reservations: typeof reservations;
+  sandbox: typeof sandbox;
   testGLM47: typeof testGLM47;
   todos: typeof todos;
 }>;

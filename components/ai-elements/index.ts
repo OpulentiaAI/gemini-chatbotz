@@ -172,3 +172,10 @@ export {
   type WebPreviewBodyProps,
   type WebPreviewConsoleProps,
 } from "./web-preview";
+
+// Fallback Tool components (for bash/file operations)
+export {
+  FallbackTool,
+  BashToolResult,
+  FileToolResult,
+} from "./fallback-tool";
