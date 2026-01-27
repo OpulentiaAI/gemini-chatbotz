@@ -116,6 +116,20 @@ function selectAgent(modelId?: string): Agent {
   return createAgentWithModel(modelId as any);
 }
 
+export const testModelValidation = action({
+  args: {
+    modelId: modelValidator,
+  },
+  handler: async (ctx, { modelId }) => {
+    console.log("TEST: modelId received:", modelId);
+    return { 
+      success: true, 
+      modelId: modelId,
+      timestamp: Date.now()
+    };
+  },
+});
+
 export const createNewThread = action({
   args: {
     userId: v.optional(v.string()),
