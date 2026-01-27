@@ -56,6 +56,12 @@ const modelValidator = v.optional(v.union(
   v.literal("grok-4-1-fast-non-reasoning")
 ));
 
+// Test with a simple string literal
+const testValidator = v.optional(v.union(
+  v.literal("moonshotai/kimi-k2.5"),
+  v.literal("openai/gpt-4o")
+));
+
 // File attachment validator for PDF, images, etc.
 const fileAttachmentValidator = v.object({
   storageId: v.optional(v.id("_storage")),
