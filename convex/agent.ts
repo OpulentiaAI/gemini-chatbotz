@@ -2,6 +2,8 @@ import { Agent, createTool } from "@convex-dev/agent";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createFireworks } from "@ai-sdk/fireworks";
+import { createTogetherAI } from "@ai-sdk/togetherai";
+import { createXai } from "@ai-sdk/xai";
 import { components, internal, api } from "./_generated/api";
 import { z } from "zod";
 
@@ -16,6 +18,14 @@ const nvidia = createOpenAI({
 
 const fireworks = createFireworks({
   apiKey: process.env.FIREWORKS_API_KEY,
+});
+
+const togetherai = createTogetherAI({
+  apiKey: process.env.TOGETHER_AI_API_KEY,
+});
+
+const xai = createXai({
+  apiKey: process.env.XAI_API_KEY,
 });
 
 const artifactKinds = ["text", "code", "sheet"] as const;
@@ -43,6 +53,7 @@ type OpenRouterModelId =
   | "deepseek/deepseek-v3.2-speciale"
   | "x-ai/grok-4.1-fast:free"
   | "moonshotai/kimi-k2-thinking"
+  | "moonshotai/kimi-k2.5"
   | "prime-intellect/intellect-3"
   | "minimax/minimax-m2"
   | "minimax/minimax-m2.1"
@@ -52,7 +63,15 @@ type OpenRouterModelId =
   | "z-ai/glm-4.7"
   | "qwen/qwen3-vl-235b-a22b-instruct"
   | "accounts/fireworks/models/minimax-m2p1"
-  | "accounts/fireworks/models/glm-4p7";
+  | "accounts/fireworks/models/glm-4p7"
+  | "togetherai/glm-4.7"
+  | "zai-org/GLM-4.7";
+
+type XaiModelId =
+  | "grok-4-1-fast-reasoning"
+  | "grok-4-1-fast-non-reasoning";
+
+type ModelId = OpenRouterModelId | XaiModelId;
 
 const baseInstructions = `
 <core_identity>
@@ -294,6 +313,43 @@ You have access to Hyperbrowser for advanced browser automation with LIVE PREVIE
 - Increase maxSteps for complex tasks (50+ for multi-page flows)
 - Keep sessions open for related follow-up tasks
 </hyperbrowser_tools>
+
+<sandbox_tools>
+You have access to Vercel Sandbox for secure code execution:
+
+**Available Tools:**
+
+1. **createSandbox** - Create an isolated environment
+   - Returns a sessionId for subsequent operations
+   - 45-minute timeout, 4 vCPUs available
+
+2. **executeBash** - Run shell commands
+   - Requires sessionId from createSandbox
+   - NEVER use 'cd' - use full paths instead
+   - Common: ls, cat, find, grep, python, node, pip, npm
+
+3. **sandboxWriteFile** - Write files to sandbox
+   - Create scripts, data files, configs before running commands
+
+4. **sandboxReadFile** - Read files from sandbox
+   - Retrieve results, check generated files
+
+5. **sandboxListFiles** - List directory contents
+   - Explore sandbox filesystem
+
+6. **stopSandbox** - Cleanup session
+   - Always call when done to free resources
+
+7. **executeCode** - One-shot execution
+   - Automatically creates sandbox, runs command, cleans up
+   - Perfect for quick code execution
+
+**Best Practices:**
+- For simple one-off commands, use executeCode
+- For multi-step workflows, use createSandbox → multiple executeBash → stopSandbox
+- Write files first if command needs them
+- Always cleanup sessions when done
+</sandbox_tools>
 
 <coding_guidelines>
 When writing code:
@@ -1095,6 +1151,245 @@ Best for:
   }),
 
   // ==========================================================================
+  // Vercel Sandbox - Bash & File Tools
+  // ==========================================================================
+  createSandbox: createTool({
+    description: `Create an isolated Vercel Sandbox environment for executing commands and working with files.
+Returns a sessionId to use with other sandbox tools.
+Use this for:
+- Running shell commands safely
+- Installing packages and running scripts
+- File manipulation and data processing
+- Testing code in an isolated environment`,
+    args: z.object({}),
+    handler: async (ctx) => {
+      const result = await ctx.runAction((internal as any).sandbox.createSession, {});
+      return result;
+    },
+  }),
+
+  executeBash: createTool({
+    description: `Execute a bash command in an active sandbox session.
+IMPORTANT:
+- Always create a sandbox first with createSandbox
+- Use the sessionId from createSandbox
+- Commands run in an isolated Linux environment
+- NEVER use 'cd' - use full paths instead
+- Common commands: ls, cat, find, grep, python, node, pip, npm
+- Automatic fallback: If command fails, will attempt path resolution and retry`,
+    args: z.object({
+      sessionId: z.string().describe("Session ID from createSandbox"),
+      command: z.string().describe("Bash command to execute"),
+    }),
+    handler: async (ctx, { sessionId, command }) => {
+      const result = await ctx.runAction((internal as any).sandbox.executeBash, { sessionId, command });
+      
+      // If command succeeded or no stderr, return as-is
+      if (result.success && result.exitCode === 0) {
+        return result;
+      }
+      
+      const stderr = result.stderr || "";
+      const originalError = stderr;
+      
+      // === FALLBACK 1: Path not found - attempt to locate and retry ===
+      const pathNotFoundMatch = stderr.match(/(?:No such file or directory|cannot access|not found)[:\s]*['"]?([^\s'"]+)['"]?/i);
+      if (pathNotFoundMatch) {
+        const missingPath = pathNotFoundMatch[1];
+        console.log(`[Bash Fallback] Path not found: ${missingPath}, attempting to locate...`);
+        
+        // Try to find the file/directory
+        const filename = missingPath.split("/").pop();
+        if (filename) {
+          const findResult = await ctx.runAction((internal as any).sandbox.executeBash, {
+            sessionId,
+            command: `find . -name "${filename}" -o -name "${filename}*" 2>/dev/null | head -5`,
+          });
+          
+          if (findResult.success && findResult.stdout?.trim()) {
+            const foundPaths = findResult.stdout.trim().split("\n");
+            const correctedPath = foundPaths[0];
+            console.log(`[Bash Fallback] Found alternative: ${correctedPath}`);
+            
+            // Retry with corrected path
+            const correctedCommand = command.replace(missingPath, correctedPath);
+            if (correctedCommand !== command) {
+              const retryResult = await ctx.runAction((internal as any).sandbox.executeBash, {
+                sessionId,
+                command: correctedCommand,
+              });
+              
+              if (retryResult.success && retryResult.exitCode === 0) {
+                return {
+                  ...retryResult,
+                  _fallback: {
+                    type: "path_correction",
+                    original: missingPath,
+                    corrected: correctedPath,
+                    originalCommand: command,
+                    correctedCommand,
+                  },
+                };
+              }
+            }
+          }
+        }
+      }
+      
+      // === FALLBACK 2: Command not found - check alternatives ===
+      const cmdNotFoundMatch = stderr.match(/(?:command not found|not found)[:\s]*['"]?(\w+)['"]?/i);
+      if (cmdNotFoundMatch) {
+        const missingCmd = cmdNotFoundMatch[1] || command.split(" ")[0];
+        console.log(`[Bash Fallback] Command not found: ${missingCmd}, checking alternatives...`);
+        
+        // Common command alternatives
+        const alternatives: Record<string, string[]> = {
+          python: ["python3", "python2"],
+          python3: ["python"],
+          pip: ["pip3", "python -m pip", "python3 -m pip"],
+          pip3: ["pip", "python3 -m pip"],
+          node: ["nodejs"],
+          npm: ["pnpm", "yarn"],
+        };
+        
+        const alts = alternatives[missingCmd];
+        if (alts) {
+          for (const alt of alts) {
+            const altCommand = command.replace(new RegExp(`^${missingCmd}\\b`), alt);
+            const altResult = await ctx.runAction((internal as any).sandbox.executeBash, {
+              sessionId,
+              command: altCommand,
+            });
+            
+            if (altResult.success && altResult.exitCode === 0) {
+              return {
+                ...altResult,
+                _fallback: {
+                  type: "command_alternative",
+                  original: missingCmd,
+                  alternative: alt,
+                  originalCommand: command,
+                  correctedCommand: altCommand,
+                },
+              };
+            }
+          }
+        }
+      }
+      
+      // === FALLBACK 3: Permission denied - try with different approach ===
+      if (stderr.includes("Permission denied")) {
+        console.log(`[Bash Fallback] Permission denied, attempting workaround...`);
+        
+        // If trying to execute a script, try with explicit interpreter
+        if (command.match(/^\.\/[\w-]+\.py/)) {
+          const pyCommand = command.replace(/^\.\//, "python3 ./");
+          const pyResult = await ctx.runAction((internal as any).sandbox.executeBash, {
+            sessionId,
+            command: pyCommand,
+          });
+          if (pyResult.success && pyResult.exitCode === 0) {
+            return { ...pyResult, _fallback: { type: "interpreter_prefix", correctedCommand: pyCommand } };
+          }
+        }
+        if (command.match(/^\.\/[\w-]+\.sh/)) {
+          const shCommand = command.replace(/^\.\//, "bash ./");
+          const shResult = await ctx.runAction((internal as any).sandbox.executeBash, {
+            sessionId,
+            command: shCommand,
+          });
+          if (shResult.success && shResult.exitCode === 0) {
+            return { ...shResult, _fallback: { type: "interpreter_prefix", correctedCommand: shCommand } };
+          }
+        }
+      }
+      
+      // === No fallback succeeded - return original error with diagnostics ===
+      return {
+        ...result,
+        _fallbackAttempted: true,
+        _originalError: originalError,
+        _suggestion: stderr.includes("No such file")
+          ? "Try running 'ls' or 'find . -name <filename>' to locate the file."
+          : stderr.includes("command not found")
+            ? "The command may not be installed. Try 'which <cmd>' or install with apt/pip/npm."
+            : stderr.includes("Permission denied")
+              ? "Try prefixing with interpreter (python3, bash) or check file permissions."
+              : null,
+      };
+    },
+  }),
+
+  sandboxWriteFile: createTool({
+    description: `Write a file to the sandbox filesystem.
+Use this to create scripts, data files, or configuration before running commands.`,
+    args: z.object({
+      sessionId: z.string().describe("Session ID from createSandbox"),
+      path: z.string().describe("File path in the sandbox (e.g., './script.py', './data.json')"),
+      content: z.string().describe("File content to write"),
+    }),
+    handler: async (ctx, { sessionId, path, content }) => {
+      const result = await ctx.runAction((internal as any).sandbox.writeFile, { sessionId, path, content });
+      return result;
+    },
+  }),
+
+  sandboxReadFile: createTool({
+    description: `Read a file from the sandbox filesystem.
+Use this to retrieve results, check generated files, or read data.`,
+    args: z.object({
+      sessionId: z.string().describe("Session ID from createSandbox"),
+      path: z.string().describe("File path in the sandbox to read"),
+    }),
+    handler: async (ctx, { sessionId, path }) => {
+      const result = await ctx.runAction((internal as any).sandbox.readFile, { sessionId, path });
+      return result;
+    },
+  }),
+
+  sandboxListFiles: createTool({
+    description: `List files in a sandbox directory.
+Use this to explore the sandbox filesystem and find files.`,
+    args: z.object({
+      sessionId: z.string().describe("Session ID from createSandbox"),
+      path: z.string().optional().describe("Directory path to list (default: current directory)"),
+    }),
+    handler: async (ctx, { sessionId, path }) => {
+      const result = await ctx.runAction((internal as any).sandbox.listFiles, { sessionId, path });
+      return result;
+    },
+  }),
+
+  stopSandbox: createTool({
+    description: `Stop and cleanup a sandbox session.
+Always call this when done with a sandbox to free resources.`,
+    args: z.object({
+      sessionId: z.string().describe("Session ID to stop"),
+    }),
+    handler: async (ctx, { sessionId }) => {
+      const result = await ctx.runAction((internal as any).sandbox.stopSession, { sessionId });
+      return result;
+    },
+  }),
+
+  executeCode: createTool({
+    description: `Execute code in an isolated sandbox environment (one-shot).
+Automatically creates a sandbox, runs the command, and cleans up.
+Perfect for quick code execution without managing sessions.`,
+    args: z.object({
+      command: z.string().describe("Command to execute (e.g., 'python script.py', 'node index.js')"),
+      files: z.array(z.object({
+        path: z.string().describe("File path"),
+        content: z.string().describe("File content"),
+      })).optional().describe("Files to create before running command"),
+    }),
+    handler: async (ctx, { command, files }) => {
+      const result = await ctx.runAction((internal as any).sandbox.executeOneShot, { command, files });
+      return result;
+    },
+  }),
+
+  // ==========================================================================
   // Image Generation (Nano Banana Pro)
   // ==========================================================================
   generateAdvancedImage: createTool({
@@ -1538,7 +1833,10 @@ PRIORITY LEVELS:
   }),
 };
 
-export function createAgentWithModel(modelId: OpenRouterModelId) {
+// GLM 4.7 via TogetherAI - Default model with tool calling support
+export const GLM_47_MODEL_ID = "zai-org/GLM-4.7";
+
+export function createAgentWithModel(modelId: ModelId = "grok-4-1-fast-reasoning") {
   // Gemini 3 models support "thinking". When tool calling is enabled, Google requires
   // thought signatures to be preserved across steps; we rely on a pnpm patch that
   // preserves signature fields in @convex-dev/agent's message serialization.
@@ -1546,13 +1844,19 @@ export function createAgentWithModel(modelId: OpenRouterModelId) {
   const isMinimax = modelId.startsWith("minimax/") || modelId.startsWith("accounts/fireworks/models/minimax");
   const isNvidiaKimi = modelId === "moonshotai/kimi-k2-thinking";
   const isFireworks = modelId.startsWith("accounts/fireworks/models/");
+  const isTogetherAI = modelId === "togetherai/glm-4.7" || modelId === "zai-org/GLM-4.7" || modelId === "z-ai/glm-4.7";
+  const isXai = modelId === "grok-4-1-fast-reasoning" || modelId === "grok-4-1-fast-non-reasoning";
 
   // Route to appropriate provider
-  const languageModel = isNvidiaKimi
-    ? nvidia.chat(modelId)
-    : isFireworks
-      ? fireworks(modelId)
-      : openrouter(modelId);
+  const languageModel = isXai
+    ? xai(modelId as XaiModelId)
+    : isTogetherAI
+      ? togetherai(GLM_47_MODEL_ID)
+      : isNvidiaKimi
+        ? nvidia.chat(modelId)
+        : isFireworks
+          ? fireworks(modelId)
+          : openrouter(modelId as OpenRouterModelId);
 
   // MiniMax models - include coding and search tools, exclude complex multi-step flight tools
   const minimaxTools = {

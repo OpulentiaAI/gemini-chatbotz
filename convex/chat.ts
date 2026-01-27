@@ -39,6 +39,7 @@ const modelValidator = v.optional(v.union(
   v.literal("deepseek/deepseek-v3.2-speciale"),
   v.literal("x-ai/grok-4.1-fast:free"),
   v.literal("moonshotai/kimi-k2-thinking"),
+  v.literal("moonshotai/kimi-k2.5"),
   v.literal("prime-intellect/intellect-3"),
   v.literal("minimax/minimax-m2"),
   v.literal("minimax/minimax-m2.1"),
@@ -48,7 +49,10 @@ const modelValidator = v.optional(v.union(
   v.literal("z-ai/glm-4.7"),
   v.literal("qwen/qwen3-vl-235b-a22b-instruct"),
   v.literal("accounts/fireworks/models/minimax-m2p1"),
-  v.literal("accounts/fireworks/models/glm-4p7")
+  v.literal("accounts/fireworks/models/glm-4p7"),
+  // xAI models
+  v.literal("grok-4-1-fast-reasoning"),
+  v.literal("grok-4-1-fast-non-reasoning")
 ));
 
 // File attachment validator for PDF, images, etc.

@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAction, usePaginationOpts } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useUIMessages } from "@convex-dev/agent/react";
 import { Message as PreviewMessage } from "@/components/custom/message";
@@ -102,8 +102,8 @@ export function Chat({
     setThreadId(newThreadId);
   }, [id]);
 
-  // Get pagination options for loading messages from threads
-  const paginationOpts = usePaginationOpts(50);
+  // Pagination options for loading messages from threads
+  const paginationOpts = useMemo(() => ({ numItems: 50, cursor: null }), []);
 
   const createThread = useAction(api.chat.createNewThread);
   // Use streamMessage for realtime streaming with Convex
@@ -180,7 +180,7 @@ export function Chat({
       ? {
           threadId,
           paginationOpts,
-          streamArgs: { kind: "messages" },
+          streamArgs: { kind: "list" },
         }
       : "skip",
     { initialNumItems: 50, stream: true }

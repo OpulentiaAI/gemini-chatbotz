@@ -29,15 +29,17 @@ import { useArtifact } from "@/hooks/use-artifact";
 import { MCPSettings } from "@/components/custom/mcp-settings";
 import { toast } from "sonner";
 
+type ModelId = OpenRouterModelId;
+
 type PromptInputProps = {
-  onSubmit: (value: string, attachments?: File[], modelId?: OpenRouterModelId) => void;
+  onSubmit: (value: string, attachments?: File[], modelId?: ModelId) => void;
   onStop?: () => void;
   isLoading?: boolean;
   isStreaming?: boolean;
   placeholder?: string;
   className?: string;
-  selectedModel?: OpenRouterModelId;
-  onModelChange?: (modelId: OpenRouterModelId) => void;
+  selectedModel?: ModelId;
+  onModelChange?: (modelId: ModelId) => void;
   isCompact?: boolean;
 };
 
@@ -46,8 +48,8 @@ type RichTextEditorProps = {
   value: string;
   onChange: (value: string) => void;
   onSubmit: (message?: string, attachments?: File[]) => void;
-  selectedModel?: OpenRouterModelId;
-  onSelectModel?: (model: OpenRouterModelId) => void;
+  selectedModel?: ModelId;
+  onSelectModel?: (model: ModelId) => void;
   isCompact?: boolean;
   isDisabled?: boolean;
   isPending?: boolean;
@@ -57,7 +59,9 @@ type RichTextEditorProps = {
 
 // Group models by provider
 function getModelsByProvider(): { provider: string; models: ModelDefinition[] }[] {
-  const grouped = OPENROUTER_MODELS.reduce((acc, model) => {
+  // Use only OpenRouter models
+  const allModels = OPENROUTER_MODELS;
+  const grouped = allModels.reduce((acc, model) => {
     if (!acc[model.provider]) {
       acc[model.provider] = [];
     }
@@ -107,7 +111,8 @@ function RichTextEditor({
   const modelsByProvider = useMemo(() => getModelsByProvider(), []);
 
   const currentModel = useMemo(() => {
-    return OPENROUTER_MODELS.find((m) => m.id === selectedModel);
+    const allModels = OPENROUTER_MODELS;
+    return allModels.find((m) => m.id === selectedModel);
   }, [selectedModel]);
 
   const handleInput = useCallback(() => {
@@ -499,7 +504,7 @@ export const PromptInput = ({
   isStreaming = false,
   placeholder = "Ask a follow-up question or construct a Devin prompt",
   className = "",
-  selectedModel = "anthropic/claude-3.5-sonnet",
+  selectedModel = "moonshotai/kimi-k2.5",
   onModelChange,
   isCompact = false,
 }: PromptInputProps) => {

@@ -45,6 +45,7 @@ export type OpenRouterModelId =
   | "deepseek/deepseek-v3.2-speciale"
   | "x-ai/grok-4.1-fast:free"
   | "moonshotai/kimi-k2-thinking"
+  | "moonshotai/kimi-k2.5"
   | "prime-intellect/intellect-3"
   | "minimax/minimax-m2"
   | "minimax/minimax-m2.1"
@@ -71,10 +72,21 @@ export interface ModelDefinition {
     vision?: boolean;
     functionCalling?: boolean;
     streaming?: boolean;
+    reasoning?: boolean;
   };
 }
 
 export const OPENROUTER_MODELS: ModelDefinition[] = [
+  {
+    id: "z-ai/glm-4.7",
+    name: "GLM 4.7 (Default)",
+    provider: "TogetherAI",
+    description: "358.5B parameter model with 202K context. Excellent for tool calling, JSON mode, and agentic workflows. $0.45/M in, $2.00/M out.",
+    contextLength: 202800,
+    maxOutput: 50000,
+    pricing: { prompt: 0.00045, completion: 0.002 },
+    capabilities: { functionCalling: true, streaming: true },
+  },
   {
     id: "openai/gpt-5.2",
     name: "GPT-5.2",
@@ -114,6 +126,16 @@ export const OPENROUTER_MODELS: ModelDefinition[] = [
     maxOutput: 4096,
     pricing: { prompt: 0.0, completion: 0.0 },
     capabilities: { functionCalling: true, streaming: true },
+  },
+  {
+    id: "moonshotai/kimi-k2.5",
+    name: "Kimi K2.5",
+    provider: "Moonshot AI",
+    description: "State-of-the-art visual coding capability with self-directed agent swarm paradigm. Built on Kimi K2 with continued pretraining over 15T mixed visual and text tokens.",
+    contextLength: 262144,
+    maxOutput: 262144,
+    pricing: { prompt: 0.60, completion: 3.0 },
+    capabilities: { vision: true, functionCalling: true, streaming: true, reasoning: true },
   },
   {
     id: "anthropic/claude-opus-4.5",
@@ -337,17 +359,6 @@ export const OPENROUTER_MODELS: ModelDefinition[] = [
     capabilities: { vision: true, functionCalling: true, streaming: true },
   },
   {
-    id: "z-ai/glm-4.7",
-    name: "GLM 4.7",
-    provider: "Z.AI",
-    description:
-      "Z.AI's flagship model with enhanced programming capabilities and stable multi-step reasoning for complex agent tasks.",
-    contextLength: 202752,
-    maxOutput: 8192,
-    pricing: { prompt: 0.00044, completion: 0.00174 },
-    capabilities: { functionCalling: true, streaming: true },
-  },
-  {
     id: "qwen/qwen3-vl-235b-a22b-instruct",
     name: "Qwen3 VL 235B",
     provider: "Qwen",
@@ -379,7 +390,7 @@ export const OPENROUTER_MODELS: ModelDefinition[] = [
   },
 ];
 
-export const DEFAULT_MODEL: OpenRouterModelId = "accounts/fireworks/models/minimax-m2p1";
+export const DEFAULT_MODEL: OpenRouterModelId = "moonshotai/kimi-k2.5";
 export const DEFAULT_FAST_MODEL: OpenRouterModelId = "openai/gpt-4o-mini";
 export const DEFAULT_ARTIFACT_MODEL: OpenRouterModelId = "anthropic/claude-3.5-sonnet";
 
