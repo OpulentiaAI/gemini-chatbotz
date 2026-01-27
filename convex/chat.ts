@@ -122,6 +122,45 @@ export const createNewThread = action({
     modelId: modelValidator,
   },
   handler: async (ctx, { userId, modelId }) => {
+    console.log("DEBUG: createNewThread called with modelId:", modelId);
+    console.log("DEBUG: Available models in validator:", [
+      "openai/gpt-4o",
+      "openai/gpt-4o-mini", 
+      "openai/gpt-4-turbo",
+      "openai/gpt-5.2",
+      "anthropic/claude-3.5-sonnet",
+      "anthropic/claude-3-opus",
+      "anthropic/claude-3-haiku",
+      "anthropic/claude-opus-4.5",
+      "google/gemini-3-flash-preview",
+      "google/gemini-2.5-flash",
+      "google/gemini-2.5-pro",
+      "google/gemini-2.0-flash-001",
+      "google/gemini-3-pro-preview",
+      "meta-llama/llama-3.1-70b-instruct",
+      "meta-llama/llama-3.1-405b-instruct",
+      "mistralai/mistral-large",
+      "mistralai/mistral-large-2512",
+      "deepseek/deepseek-chat",
+      "deepseek/deepseek-v3.2",
+      "deepseek/deepseek-v3.2-speciale",
+      "x-ai/grok-4.1-fast:free",
+      "moonshotai/kimi-k2-thinking",
+      "moonshotai/kimi-k2.5",
+      "prime-intellect/intellect-3",
+      "minimax/minimax-m2",
+      "minimax/minimax-m2.1",
+      "x-ai/grok-code-fast-1",
+      "z-ai/glm-4.6",
+      "z-ai/glm-4.6v",
+      "z-ai/glm-4.7",
+      "qwen/qwen3-vl-235b-a22b-instruct",
+      "accounts/fireworks/models/minimax-m2p1",
+      "accounts/fireworks/models/glm-4p7",
+      "grok-4-1-fast-reasoning",
+      "grok-4-1-fast-non-reasoning"
+    ]);
+    
     const agent = selectAgent(modelId);
     const { threadId } = await agent.createThread(ctx, {
       userId: userId ?? "anonymous",
