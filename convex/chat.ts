@@ -412,3 +412,34 @@ export const streamMessage = action({
     }
   },
 });
+
+/**
+ * NEW: createThreadV2 - Uses string validator to bypass Convex union caching issue
+ * This is a workaround for the persistent validator caching problem with createNewThread
+ */
+export const createThreadV2 = action({
+  args: {
+    userId: v.optional(v.string()),
+    modelId: v.string(),
+  },
+  handler: async (ctx, { userId, modelId }): Promise<{ threadId: string }> => {
+    // Runtime validation against whitelist
+    if (!SUPPORTED_MODELS.has(modelId)) {
+      throw new Error(`Unsupported model: ${modelId}. Supported models: ${Array.from(SUPPORTED_MODELS).join(", ")}`);
+    }
+    
+    const agent = createAgentWithModel(modelId as any);
+    const { threadId } = await agent.createThread(ctx, {
+      userId: userId ?? "anonymous",
+    });
+    
+    if (userId) {
+      await ctx.runMutation(api.chatDb.saveUserThread, {
+        threadId,
+        userId,
+      });
+    }
+    
+    return { threadId };
+  },
+});
