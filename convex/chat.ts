@@ -16,7 +16,7 @@ function isValidConvexThreadId(threadId: string): boolean {
   return /^[a-z0-9]+$/.test(threadId) && !threadId.includes("-");
 }
 
-// Kimi K2.5 model added - deployed 2025-01-27 - FORCE REDEPLOY v3
+// Kimi K2.5 model added - deployed 2025-01-27 - FORCE REDEPLOY v4 - FINAL ATTEMPT
 // Using string validator to bypass Convex union caching issue
 const modelValidator = v.optional(v.string());
 
