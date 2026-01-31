@@ -46,6 +46,7 @@ const SUPPORTED_MODELS = new Set([
   "moonshotai/kimi-k2-thinking",
   "moonshotai/kimi-k2.5",
   "fireworks/kimi-k2p5",
+  "accounts/fireworks/models/kimi-k2p5",
   "prime-intellect/intellect-3",
   "minimax/minimax-m2",
   "minimax/minimax-m2.1",
@@ -141,10 +142,10 @@ export const testModelValidation = action({
   },
 });
 
-export const createNewThread = action({
+export const createThread2025 = action({
   args: {
     userId: v.optional(v.string()),
-    modelId: modelValidator,
+    modelId: v.optional(v.string()),
   },
   handler: async (ctx, { userId, modelId }) => {
     console.log("DEBUG: createNewThread called with modelId:", modelId);

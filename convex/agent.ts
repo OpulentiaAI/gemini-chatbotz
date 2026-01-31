@@ -1,11 +1,16 @@
+// Force rebundle - v4 (AI Gateway with debug)
 import { Agent, createTool } from "@convex-dev/agent";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createOpenAI } from "@ai-sdk/openai";
-import { createFireworks } from "@ai-sdk/fireworks";
 import { createTogetherAI } from "@ai-sdk/togetherai";
 import { createXai } from "@ai-sdk/xai";
+import { gateway as aiGateway } from "ai";
 import { components, internal, api } from "./_generated/api";
 import { z } from "zod";
+
+// Vercel AI Gateway - routes to multiple providers with automatic fallback
+// Uses OIDC auth on Vercel deployments, or AI_GATEWAY_API_KEY env var
+const gateway = aiGateway;
 
 const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
@@ -16,7 +21,9 @@ const nvidia = createOpenAI({
   apiKey: process.env.NVIDIA_API_KEY,
 });
 
-const fireworks = createFireworks({
+// Use OpenAI-compatible provider for Fireworks to avoid bundled AI SDK version issues
+const fireworks = createOpenAI({
+  baseURL: "https://api.fireworks.ai/inference/v1",
   apiKey: process.env.FIREWORKS_API_KEY,
 });
 
@@ -64,6 +71,7 @@ type OpenRouterModelId =
   | "qwen/qwen3-vl-235b-a22b-instruct"
   | "accounts/fireworks/models/minimax-m2p1"
   | "accounts/fireworks/models/glm-4p7"
+  | "accounts/fireworks/models/kimi-k2p5"
   | "togetherai/glm-4.7"
   | "zai-org/GLM-4.7";
 
@@ -436,7 +444,7 @@ const exaCategories = [
 
 const exaSearch = createTool({
   description: "Ultra-fast AI-optimized web search with semantic understanding. Exa returns high-quality, relevant results optimized for LLMs with low latency.",
-  args: z.object({
+  inputSchema: z.object({
     query: z.string().describe("Search query - natural language works best"),
     numResults: z.number().optional().describe("Number of results to return (default 10, max 100)"),
     type: z.enum(["auto", "neural", "fast", "deep"]).optional().describe("Search type: auto (best), neural (embeddings), fast (keyword), deep (thorough)"),
@@ -446,7 +454,7 @@ const exaSearch = createTool({
     includeDomains: z.array(z.string()).optional().describe("Only search these domains (e.g., ['linkedin.com', 'github.com'])"),
     excludeDomains: z.array(z.string()).optional().describe("Exclude these domains from results"),
   }),
-  handler: async (_ctx, { query, numResults = 10, type = "auto", category, useAutoprompt, text = true, includeDomains, excludeDomains }) => {
+  execute: async (_ctx, { query, numResults = 10, type = "auto", category, useAutoprompt, text = true, includeDomains, excludeDomains }) => {
     if (!process.env.EXA_API_KEY) {
       throw new Error("EXA_API_KEY not set");
     }
@@ -485,14 +493,14 @@ Perfect for:
 - Finding decision makers at companies
 - Networking and business development
 - Researching industry experts and thought leaders`,
-  args: z.object({
+  inputSchema: z.object({
     query: z.string().describe("Search query - describe the person, role, or expertise you're looking for"),
     role: z.string().optional().describe("Job title or role filter (e.g., 'VP of Engineering', 'CEO')"),
     company: z.string().optional().describe("Company name to filter by"),
     location: z.string().optional().describe("Location filter (e.g., 'San Francisco', 'New York')"),
     numResults: z.number().optional().describe("Number of results (default 10, max 100)"),
   }),
-  handler: async (_ctx, { query, role, company, location, numResults = 10 }) => {
+  execute: async (_ctx, { query, role, company, location, numResults = 10 }) => {
     if (!process.env.EXA_API_KEY) {
       throw new Error("EXA_API_KEY not set");
     }
@@ -558,12 +566,12 @@ Perfect for:
 - Finding potential partners or acquisition targets
 - Industry landscape mapping
 - Startup and investor research`,
-  args: z.object({
+  inputSchema: z.object({
     query: z.string().describe("Search query - describe the company type, industry, or criteria"),
     industry: z.string().optional().describe("Industry filter (e.g., 'fintech', 'healthcare', 'AI')"),
     numResults: z.number().optional().describe("Number of results (default 10, max 100)"),
   }),
-  handler: async (_ctx, { query, industry, numResults = 10 }) => {
+  execute: async (_ctx, { query, industry, numResults = 10 }) => {
     if (!process.env.EXA_API_KEY) {
       throw new Error("EXA_API_KEY not set");
     }
@@ -614,13 +622,13 @@ Perfect for:
 
 const exaGetContents = createTool({
   description: "Extract clean, parsed content from specific URLs. Returns markdown-formatted text, highlights, and metadata.",
-  args: z.object({
+  inputSchema: z.object({
     ids: z.array(z.string()).min(1).describe("URLs or Exa IDs to get content from"),
     text: z.boolean().optional().describe("Include full text content (default true)"),
     summary: z.boolean().optional().describe("Include AI-generated summary"),
     highlights: z.boolean().optional().describe("Include relevant highlights/excerpts"),
   }),
-  handler: async (_ctx, { ids, text = true, summary, highlights }) => {
+  execute: async (_ctx, { ids, text = true, summary, highlights }) => {
     if (!process.env.EXA_API_KEY) throw new Error("EXA_API_KEY not set");
     const body: Record<string, unknown> = {
       ids,
@@ -645,13 +653,13 @@ const exaGetContents = createTool({
 
 const exaFindSimilar = createTool({
   description: "Find pages similar to a given URL based on semantic meaning and content.",
-  args: z.object({
+  inputSchema: z.object({
     url: z.string().describe("URL to find similar pages to"),
     numResults: z.number().optional().describe("Number of similar results (default 10)"),
     category: z.enum(exaCategories).optional().describe("Filter by category: people, company, research paper, news, pdf, github, tweet, personal site, financial report"),
     text: z.boolean().optional().describe("Include full text content"),
   }),
-  handler: async (_ctx, { url, numResults = 10, category, text = true }) => {
+  execute: async (_ctx, { url, numResults = 10, category, text = true }) => {
     if (!process.env.EXA_API_KEY) throw new Error("EXA_API_KEY not set");
     const body: Record<string, unknown> = {
       url,
@@ -675,11 +683,11 @@ const exaFindSimilar = createTool({
 
 const exaAnswer = createTool({
   description: "Get a direct AI-generated answer to a question using Exa's Answer API. Perfect for factual queries.",
-  args: z.object({
+  inputSchema: z.object({
     query: z.string().describe("The question to answer"),
     text: z.boolean().optional().describe("Include source text in response"),
   }),
-  handler: async (_ctx, { query, text = true }) => {
+  execute: async (_ctx, { query, text = true }) => {
     if (!process.env.EXA_API_KEY) throw new Error("EXA_API_KEY not set");
     const body = {
       query,
@@ -701,11 +709,11 @@ const exaAnswer = createTool({
 const baseTools = {
   getWeather: createTool({
     description: "Get the current weather at a location",
-    args: z.object({
+    inputSchema: z.object({
       latitude: z.number().describe("Latitude coordinate"),
       longitude: z.number().describe("Longitude coordinate"),
     }),
-    handler: async (_ctx, { latitude, longitude }) => {
+    execute: async (_ctx, { latitude, longitude }) => {
       const response = await fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m&hourly=temperature_2m&daily=sunrise,sunset&timezone=auto`
       );
@@ -715,11 +723,11 @@ const baseTools = {
   }),
   displayFlightStatus: createTool({
     description: "Display the status of a flight",
-    args: z.object({
+    inputSchema: z.object({
       flightNumber: z.string().describe("Flight number"),
       date: z.string().describe("Date of the flight"),
     }),
-    handler: async (ctx, { flightNumber, date }): Promise<any> => {
+    execute: async (ctx, { flightNumber, date }): Promise<any> => {
       const result = await ctx.runAction(internal.actions.generateFlightStatus, {
         flightNumber,
         date,
@@ -729,11 +737,11 @@ const baseTools = {
   }),
   searchFlights: createTool({
     description: "Search for flights based on the given parameters",
-    args: z.object({
+    inputSchema: z.object({
       origin: z.string().describe("Origin airport or city"),
       destination: z.string().describe("Destination airport or city"),
     }),
-    handler: async (ctx, { origin, destination }): Promise<any> => {
+    execute: async (ctx, { origin, destination }): Promise<any> => {
       const result = await ctx.runAction(internal.actions.generateFlightSearchResults, {
         origin,
         destination,
@@ -743,10 +751,10 @@ const baseTools = {
   }),
   selectSeats: createTool({
     description: "Select seats for a flight",
-    args: z.object({
+    inputSchema: z.object({
       flightNumber: z.string().describe("Flight number"),
     }),
-    handler: async (ctx, { flightNumber }): Promise<any> => {
+    execute: async (ctx, { flightNumber }): Promise<any> => {
       const result = await ctx.runAction(internal.actions.generateSeatSelection, {
         flightNumber,
       });
@@ -755,7 +763,7 @@ const baseTools = {
   }),
   createReservation: createTool({
     description: "Display pending reservation details",
-    args: z.object({
+    inputSchema: z.object({
       seats: z.array(z.string()).describe("Array of selected seat numbers"),
       flightNumber: z.string().describe("Flight number"),
       departure: z.object({
@@ -774,7 +782,7 @@ const baseTools = {
       }),
       passengerName: z.string().describe("Name of the passenger"),
     }),
-    handler: async (ctx, props): Promise<any> => {
+    execute: async (ctx, props): Promise<any> => {
       const priceResult = await ctx.runAction(internal.actions.generateReservationPrice, props);
       const id = crypto.randomUUID();
       await ctx.runMutation(internal.reservations.create, {
@@ -787,19 +795,19 @@ const baseTools = {
   }),
   authorizePayment: createTool({
     description: "User will enter credentials to authorize payment, wait for user to respond when they are done",
-    args: z.object({
+    inputSchema: z.object({
       reservationId: z.string().describe("Unique identifier for the reservation"),
     }),
-    handler: async (_ctx, { reservationId }) => {
+    execute: async (_ctx, { reservationId }) => {
       return { reservationId };
     },
   }),
   verifyPayment: createTool({
     description: "Verify payment status",
-    args: z.object({
+    inputSchema: z.object({
       reservationId: z.string().describe("Unique identifier for the reservation"),
     }),
-    handler: async (ctx, { reservationId }) => {
+    execute: async (ctx, { reservationId }) => {
       const reservation = await ctx.runQuery(internal.reservations.getById, { id: reservationId });
       if (reservation?.hasCompletedPayment) {
         return { hasCompletedPayment: true };
@@ -809,7 +817,7 @@ const baseTools = {
   }),
   displayBoardingPass: createTool({
     description: "Display a boarding pass",
-    args: z.object({
+    inputSchema: z.object({
       reservationId: z.string().describe("Unique identifier for the reservation"),
       passengerName: z.string().describe("Name of the passenger, in title case"),
       flightNumber: z.string().describe("Flight number"),
@@ -831,7 +839,7 @@ const baseTools = {
         gate: z.string().describe("Arrival gate"),
       }),
     }),
-    handler: async (_ctx, boardingPass) => {
+    execute: async (_ctx, boardingPass) => {
       return boardingPass;
     },
   }),
@@ -841,13 +849,13 @@ const baseTools = {
 - Deliverables the user will likely save/reuse (emails, essays, code, etc.)
 - Explicit "create a document" like requests
 - For code artifacts, title MUST include file extension (e.g., "script.py", "component.tsx")`,
-    args: z.object({
+    inputSchema: z.object({
       title: z.string().describe('Document title. For code, include extension (e.g., "script.py", "App.tsx")'),
       description: z.string().describe("Detailed description of what the document should contain"),
       kind: z.enum(artifactKinds).describe("Type of document: text, code, or sheet"),
       content: z.string().describe("The actual content of the document"),
     }),
-    handler: async (_ctx, { title, kind, content }) => {
+    execute: async (_ctx, { title, kind, content }) => {
       const id = crypto.randomUUID();
       return {
         id,
@@ -860,12 +868,12 @@ const baseTools = {
   }),
   updateDocument: createTool({
     description: "Update an existing document with new content or modifications",
-    args: z.object({
+    inputSchema: z.object({
       id: z.string().describe("ID of the document to update"),
       description: z.string().describe("Description of the changes to make"),
       content: z.string().describe("The updated content"),
     }),
-    handler: async (_ctx, { id, content }) => {
+    execute: async (_ctx, { id, content }) => {
       return {
         id,
         content,
@@ -875,11 +883,11 @@ const baseTools = {
   }),
   generateImage: createTool({
     description: "Generate an image based on a text prompt using AI. Creates high-quality images from text descriptions.",
-    args: z.object({
+    inputSchema: z.object({
       prompt: z.string().describe("Detailed description of the image to generate"),
       style: z.enum(["realistic", "artistic", "cartoon", "sketch"]).optional().describe("Style of the generated image"),
     }),
-    handler: async (ctx, { prompt, style }) => {
+    execute: async (ctx, { prompt, style }) => {
       // Call the actual image generation action
       const result = await ctx.runAction(internal.actions.generateImageWithNanoBanana, {
         prompt,
@@ -906,12 +914,12 @@ Use this when the user has uploaded a PDF file and wants to:
 - Get a summary or analysis
 
 Requires a storage ID from an uploaded file.`,
-    args: z.object({
+    inputSchema: z.object({
       storageId: z.string().describe("Convex storage ID of the uploaded PDF file"),
       prompt: z.string().describe("What to analyze or extract from the PDF. Be specific about what information you need."),
       fileName: z.string().optional().describe("Original filename for better type detection"),
     }),
-    handler: async (ctx, { storageId, prompt, fileName }) => {
+    execute: async (ctx, { storageId, prompt, fileName }) => {
       const result = await ctx.runAction(internal.actions.analyzePDF, {
         storageId: storageId as any,
         prompt,
@@ -928,12 +936,12 @@ Requires a storage ID from an uploaded file.`,
 - "tables": Extract tabular data from the document
 
 Use this when you need structured, parseable output from a PDF.`,
-    args: z.object({
+    inputSchema: z.object({
       storageId: z.string().describe("Convex storage ID of the uploaded PDF file"),
       prompt: z.string().describe("Additional context or instructions for extraction"),
       extractionType: z.enum(["summary", "keyPoints", "entities", "tables"]).describe("Type of structured extraction to perform"),
     }),
-    handler: async (ctx, { storageId, prompt, extractionType }) => {
+    execute: async (ctx, { storageId, prompt, extractionType }) => {
       const result = await ctx.runAction(internal.actions.analyzePDFStructured, {
         storageId: storageId as any,
         prompt,
@@ -947,7 +955,7 @@ Use this when you need structured, parseable output from a PDF.`,
 - Comparing multiple documents
 - Cross-referencing information across files
 - Analyzing a collection of related documents`,
-    args: z.object({
+    inputSchema: z.object({
       files: z.array(
         z.object({
           storageId: z.string().describe("Convex storage ID"),
@@ -957,7 +965,7 @@ Use this when you need structured, parseable output from a PDF.`,
       ).describe("Array of files to analyze together"),
       prompt: z.string().describe("What to analyze or compare across the files"),
     }),
-    handler: async (ctx, { files, prompt }) => {
+    execute: async (ctx, { files, prompt }) => {
       const result = await ctx.runAction(internal.actions.analyzeMultipleFiles, {
         files: files.map(f => ({
           storageId: f.storageId as any,
@@ -975,12 +983,12 @@ Use this when you need structured, parseable output from a PDF.`,
 - Extracting text from images (OCR)
 - Answering questions about images
 - Analyzing charts, diagrams, or screenshots`,
-    args: z.object({
+    inputSchema: z.object({
       storageId: z.string().describe("Convex storage ID of the uploaded image"),
       prompt: z.string().describe("What to analyze or extract from the image"),
       mediaType: z.string().optional().describe("MIME type (e.g., 'image/png', 'image/jpeg')"),
     }),
-    handler: async (ctx, { storageId, prompt, mediaType }) => {
+    execute: async (ctx, { storageId, prompt, mediaType }) => {
       const result = await ctx.runAction(internal.actions.analyzeImage, {
         storageId: storageId as any,
         prompt,
@@ -1002,14 +1010,14 @@ Best for:
 
 Returns: finalResult, step trace, and liveUrl for streaming preview.
 The liveUrl can be embedded to watch the browser session in real-time.`,
-    args: z.object({
+    inputSchema: z.object({
       task: z.string().describe("Natural language description of what to do in the browser"),
       llm: z.string().optional().describe("LLM to use: 'gpt-4o', 'gpt-4o-mini', 'claude-3.5-sonnet' (default: gpt-4o)"),
       maxSteps: z.number().optional().describe("Max browser actions to take (default: 20, increase for complex tasks)"),
       sessionId: z.string().optional().describe("Reuse existing browser session for multi-step workflows"),
       keepBrowserOpen: z.boolean().optional().describe("Keep browser open after task (for follow-up tasks)"),
     }),
-    handler: async (ctx, args) => {
+    execute: async (ctx, args) => {
       const result = await ctx.runAction(internal.hyperbrowser.hyperAgentTask, args);
       return result;
     },
@@ -1021,13 +1029,13 @@ Use for:
 - Extracting data from dynamic websites
 - Scraping React/Vue/Angular apps
 - Getting content from sites requiring JavaScript`,
-    args: z.object({
+    inputSchema: z.object({
       urls: z.array(z.string()).describe("URLs to extract content from"),
       prompt: z.string().optional().describe("What specific data to extract"),
       schema: z.any().optional().describe("JSON schema for structured extraction"),
       onlyMainContent: z.boolean().optional().describe("Extract only main content, skip nav/footer (default: true)"),
     }),
-    handler: async (ctx, args) => {
+    execute: async (ctx, args) => {
       const result = await ctx.runAction(internal.hyperbrowser.hyperbrowserExtract, args);
       return result;
     },
@@ -1036,12 +1044,12 @@ Use for:
     description: `Simple page scraping with JS rendering support.
 Faster than HyperAgent for straightforward scraping tasks.
 Returns markdown content from the page.`,
-    args: z.object({
+    inputSchema: z.object({
       url: z.string().describe("URL to scrape"),
       onlyMainContent: z.boolean().optional().describe("Extract only main content (default: true)"),
       waitFor: z.number().optional().describe("Wait time in ms for dynamic content (default: 2000)"),
     }),
-    handler: async (ctx, args) => {
+    execute: async (ctx, args) => {
       const result = await ctx.runAction(internal.hyperbrowser.hyperbrowserScrape, args);
       return result;
     },
@@ -1052,10 +1060,10 @@ Returns sessionId and liveUrl for streaming preview.
 Use this when you need to:
 - Perform multiple HyperAgent tasks on the same browser
 - Keep browser state (cookies, login) across operations`,
-    args: z.object({
+    inputSchema: z.object({
       viewOnly: z.boolean().optional().describe("If true, live view is read-only (default: false)"),
     }),
-    handler: async (ctx, args) => {
+    execute: async (ctx, args) => {
       const result = await ctx.runAction(internal.hyperbrowser.createBrowserSession, args);
       return result;
     },
@@ -1071,12 +1079,12 @@ Perfect for:
 - Quick content extraction for analysis
 - Building prompt-ready snippets
 - Cached refreshes on repeated calls`,
-    args: z.object({
+    inputSchema: z.object({
       url: z.string().describe("URL to convert to markdown"),
       expirationTtl: z.number().optional().describe("Cache window in seconds (minimum 60)"),
       cleaningProcessor: z.enum(["html-rewriter", "cheerio-reader"]).optional().describe("Processing method: cheerio-reader (default) or html-rewriter for GitHub-like pages"),
     }),
-    handler: async (ctx, args) => {
+    execute: async (ctx, args) => {
       const result = await ctx.runAction((internal as any).deepcrawl.getMarkdown, args);
       return result;
     },
@@ -1088,7 +1096,7 @@ Use when you need:
 - Both markdown AND metadata from a page
 - Performance metrics and crawl diagnostics
 - Robots.txt or sitemap data`,
-    args: z.object({
+    inputSchema: z.object({
       url: z.string().describe("URL to read"),
       markdown: z.boolean().optional().describe("Include markdown content (default: true)"),
       metadata: z.boolean().optional().describe("Include page metadata (default: true)"),
@@ -1099,7 +1107,7 @@ Use when you need:
       expirationTtl: z.number().optional().describe("Cache window in seconds"),
       cleaningProcessor: z.enum(["html-rewriter", "cheerio-reader"]).optional().describe("Processing method"),
     }),
-    handler: async (ctx, args) => {
+    execute: async (ctx, args) => {
       const result = await ctx.runAction((internal as any).deepcrawl.readUrl, args);
       return result;
     },
@@ -1111,7 +1119,7 @@ Good for:
 - Fast link discovery
 - Simple site navigation understanding
 - Filtering internal vs external links`,
-    args: z.object({
+    inputSchema: z.object({
       url: z.string().describe("URL to extract links from"),
       tree: z.boolean().optional().describe("Return hierarchical tree structure (default: true)"),
       metadata: z.boolean().optional().describe("Include metadata for each link"),
@@ -1120,7 +1128,7 @@ Good for:
       folderFirst: z.boolean().optional().describe("Sort folders before files"),
       linksOrder: z.enum(["alphabetical", "page"]).optional().describe("Link ordering"),
     }),
-    handler: async (ctx, args) => {
+    execute: async (ctx, args) => {
       const result = await ctx.runAction((internal as any).deepcrawl.getLinks, args);
       return result;
     },
@@ -1133,7 +1141,7 @@ Best for:
 - Building comprehensive site trees
 - Filtering with patterns and exclusions
 - Getting navigation hierarchy`,
-    args: z.object({
+    inputSchema: z.object({
       url: z.string().describe("URL to crawl"),
       tree: z.boolean().optional().describe("Return hierarchical tree (default: true)"),
       metadata: z.boolean().optional().describe("Include metadata per link (default: true)"),
@@ -1144,7 +1152,7 @@ Best for:
       folderFirst: z.boolean().optional().describe("Sort folders before files"),
       linksOrder: z.enum(["alphabetical", "page"]).optional().describe("Link ordering"),
     }),
-    handler: async (ctx, args) => {
+    execute: async (ctx, args) => {
       const result = await ctx.runAction((internal as any).deepcrawl.extractLinks, args);
       return result;
     },
@@ -1161,8 +1169,8 @@ Use this for:
 - Installing packages and running scripts
 - File manipulation and data processing
 - Testing code in an isolated environment`,
-    args: z.object({}),
-    handler: async (ctx) => {
+    inputSchema: z.object({}),
+    execute: async (ctx) => {
       const result = await ctx.runAction((internal as any).sandbox.createSession, {});
       return result;
     },
@@ -1177,11 +1185,11 @@ IMPORTANT:
 - NEVER use 'cd' - use full paths instead
 - Common commands: ls, cat, find, grep, python, node, pip, npm
 - Automatic fallback: If command fails, will attempt path resolution and retry`,
-    args: z.object({
+    inputSchema: z.object({
       sessionId: z.string().describe("Session ID from createSandbox"),
       command: z.string().describe("Bash command to execute"),
     }),
-    handler: async (ctx, { sessionId, command }) => {
+    execute: async (ctx, { sessionId, command }) => {
       const result = await ctx.runAction((internal as any).sandbox.executeBash, { sessionId, command });
       
       // If command succeeded or no stderr, return as-is
@@ -1323,12 +1331,12 @@ IMPORTANT:
   sandboxWriteFile: createTool({
     description: `Write a file to the sandbox filesystem.
 Use this to create scripts, data files, or configuration before running commands.`,
-    args: z.object({
+    inputSchema: z.object({
       sessionId: z.string().describe("Session ID from createSandbox"),
       path: z.string().describe("File path in the sandbox (e.g., './script.py', './data.json')"),
       content: z.string().describe("File content to write"),
     }),
-    handler: async (ctx, { sessionId, path, content }) => {
+    execute: async (ctx, { sessionId, path, content }) => {
       const result = await ctx.runAction((internal as any).sandbox.writeFile, { sessionId, path, content });
       return result;
     },
@@ -1337,11 +1345,11 @@ Use this to create scripts, data files, or configuration before running commands
   sandboxReadFile: createTool({
     description: `Read a file from the sandbox filesystem.
 Use this to retrieve results, check generated files, or read data.`,
-    args: z.object({
+    inputSchema: z.object({
       sessionId: z.string().describe("Session ID from createSandbox"),
       path: z.string().describe("File path in the sandbox to read"),
     }),
-    handler: async (ctx, { sessionId, path }) => {
+    execute: async (ctx, { sessionId, path }) => {
       const result = await ctx.runAction((internal as any).sandbox.readFile, { sessionId, path });
       return result;
     },
@@ -1350,11 +1358,11 @@ Use this to retrieve results, check generated files, or read data.`,
   sandboxListFiles: createTool({
     description: `List files in a sandbox directory.
 Use this to explore the sandbox filesystem and find files.`,
-    args: z.object({
+    inputSchema: z.object({
       sessionId: z.string().describe("Session ID from createSandbox"),
       path: z.string().optional().describe("Directory path to list (default: current directory)"),
     }),
-    handler: async (ctx, { sessionId, path }) => {
+    execute: async (ctx, { sessionId, path }) => {
       const result = await ctx.runAction((internal as any).sandbox.listFiles, { sessionId, path });
       return result;
     },
@@ -1363,10 +1371,10 @@ Use this to explore the sandbox filesystem and find files.`,
   stopSandbox: createTool({
     description: `Stop and cleanup a sandbox session.
 Always call this when done with a sandbox to free resources.`,
-    args: z.object({
+    inputSchema: z.object({
       sessionId: z.string().describe("Session ID to stop"),
     }),
-    handler: async (ctx, { sessionId }) => {
+    execute: async (ctx, { sessionId }) => {
       const result = await ctx.runAction((internal as any).sandbox.stopSession, { sessionId });
       return result;
     },
@@ -1376,14 +1384,14 @@ Always call this when done with a sandbox to free resources.`,
     description: `Execute code in an isolated sandbox environment (one-shot).
 Automatically creates a sandbox, runs the command, and cleans up.
 Perfect for quick code execution without managing sessions.`,
-    args: z.object({
+    inputSchema: z.object({
       command: z.string().describe("Command to execute (e.g., 'python script.py', 'node index.js')"),
       files: z.array(z.object({
         path: z.string().describe("File path"),
         content: z.string().describe("File content"),
       })).optional().describe("Files to create before running command"),
     }),
-    handler: async (ctx, { command, files }) => {
+    execute: async (ctx, { command, files }) => {
       const result = await ctx.runAction((internal as any).sandbox.executeOneShot, { command, files });
       return result;
     },
@@ -1402,13 +1410,13 @@ Best for:
 - Professional-grade design with up to 4K output
 
 Supports: multiple aspect ratios, style controls, identity preservation (up to 5 subjects)`,
-    args: z.object({
+    inputSchema: z.object({
       prompt: z.string().describe("Detailed description of the image to generate"),
       style: z.string().optional().describe("Style: realistic, artistic, cinematic, illustration, minimalist, etc."),
       aspectRatio: z.string().optional().describe("Aspect ratio: 1:1, 16:9, 9:16, 4:3, 3:4, 2:1"),
       quality: z.string().optional().describe("Quality: standard, high, 2k, 4k"),
     }),
-    handler: async (ctx, args) => {
+    execute: async (ctx, args) => {
       const result = await ctx.runAction(internal.actions.generateImageWithNanoBanana, args);
       return result;
     },
@@ -1426,7 +1434,7 @@ Use this to remember:
 - Technical skills and expertise areas
 - Past decisions and their reasoning
 - Facts about the user (identity, relationships, events)`,
-    args: z.object({
+    inputSchema: z.object({
       content: z.string().describe("Concise memory content to store - should be actionable and specific"),
       factType: z.enum([
         "preference",    // User preferences, settings, communication style
@@ -1441,7 +1449,7 @@ Use this to remember:
       tags: z.array(z.string()).optional().describe("Tags for categorization"),
       explanation: z.string().describe("Why this memory is being added"),
     }),
-    handler: async (ctx, { content, factType, importance, tags, explanation }) => {
+    execute: async (ctx, { content, factType, importance, tags, explanation }) => {
       console.log(`[ADD_MEMORY] ${explanation}`);
 
       const userId = "default-user";
@@ -1487,7 +1495,7 @@ Use this to remember:
 
   listMemories: createTool({
     description: `Retrieve stored memories and facts about the user. Use at the start of conversations to recall context and preferences.`,
-    args: z.object({
+    inputSchema: z.object({
       factType: z.enum([
         "preference",
         "identity",
@@ -1500,7 +1508,7 @@ Use this to remember:
       searchQuery: z.string().optional().describe("Search query to find relevant memories"),
       explanation: z.string().describe("Why memories are being listed"),
     }),
-    handler: async (ctx, { factType, searchQuery, explanation }) => {
+    execute: async (ctx, { factType, searchQuery, explanation }) => {
       console.log(`[LIST_MEMORIES] ${explanation}`);
 
       const userId = "default-user";
@@ -1542,11 +1550,11 @@ Use this to remember:
 
   removeMemory: createTool({
     description: `Remove a previously stored memory/fact that is no longer relevant or accurate.`,
-    args: z.object({
+    inputSchema: z.object({
       factId: z.string().describe("ID of the fact/memory to remove (factId from listMemories)"),
       explanation: z.string().describe("Why this memory is being removed"),
     }),
-    handler: async (ctx, { factId, explanation }) => {
+    execute: async (ctx, { factId, explanation }) => {
       console.log(`[REMOVE_MEMORY] ${explanation}`);
 
       const userId = "default-user";
@@ -1572,14 +1580,14 @@ Use this to remember:
 
   updateMemory: createTool({
     description: `Update an existing memory/fact with new or corrected information.`,
-    args: z.object({
+    inputSchema: z.object({
       factId: z.string().describe("ID of the fact/memory to update"),
       content: z.string().optional().describe("New content for the memory"),
       confidence: z.number().min(0).max(100).optional().describe("New confidence/importance score"),
       tags: z.array(z.string()).optional().describe("New tags"),
       explanation: z.string().describe("Why this memory is being updated"),
     }),
-    handler: async (ctx, { factId, content, confidence, tags, explanation }) => {
+    execute: async (ctx, { factId, content, confidence, tags, explanation }) => {
       console.log(`[UPDATE_MEMORY] ${explanation}`);
 
       const userId = "default-user";
@@ -1608,7 +1616,7 @@ Use this to remember:
 
   searchMemories: createTool({
     description: `Search memories using semantic/keyword search. Better than listMemories for finding specific information.`,
-    args: z.object({
+    inputSchema: z.object({
       query: z.string().describe("Search query to find relevant memories"),
       factType: z.enum([
         "preference",
@@ -1622,7 +1630,7 @@ Use this to remember:
       limit: z.number().optional().describe("Max results to return (default 10)"),
       explanation: z.string().describe("Why searching memories"),
     }),
-    handler: async (ctx, { query, factType, limit, explanation }) => {
+    execute: async (ctx, { query, factType, limit, explanation }) => {
       console.log(`[SEARCH_MEMORIES] ${explanation}`);
 
       const userId = "default-user";
@@ -1697,7 +1705,7 @@ PRIORITY LEVELS:
 - HIGH: Important, should be done soon
 - MEDIUM: Normal priority (default)
 - LOW: Nice to have, do when time permits`,
-    args: z.object({
+    inputSchema: z.object({
       merge: z.boolean().optional().default(false).describe("If true, merge with existing todos; if false, replace all"),
       todos: z.array(z.object({
         id: z.string().describe("Unique ID for this todo item"),
@@ -1708,7 +1716,7 @@ PRIORITY LEVELS:
       })).describe("List of todos to create/update"),
       explanation: z.string().describe("Why these todos are being set"),
     }),
-    handler: async (ctx, { merge, todos, explanation }) => {
+    execute: async (ctx, { merge, todos, explanation }) => {
       console.log(`[TODO_WRITE] ${explanation}`);
 
       const userId = "default-user";
@@ -1769,11 +1777,11 @@ PRIORITY LEVELS:
 
   todoRead: createTool({
     description: `Read the current todo list for this session. Use at the start of tasks to see what's already tracked.`,
-    args: z.object({
+    inputSchema: z.object({
       status: z.enum(["pending", "in_progress", "completed", "cancelled"]).optional().describe("Filter by status"),
       explanation: z.string().describe("Why todos are being read"),
     }),
-    handler: async (ctx, { status, explanation }) => {
+    execute: async (ctx, { status, explanation }) => {
       console.log(`[TODO_READ] ${explanation}`);
 
       const userId = "default-user";
@@ -1808,14 +1816,14 @@ PRIORITY LEVELS:
 
   todoUpdate: createTool({
     description: `Update a specific todo's status or content. Use when completing tasks or changing priorities.`,
-    args: z.object({
+    inputSchema: z.object({
       todoId: z.string().describe("ID of the todo to update (from todoRead)"),
       status: z.enum(["pending", "in_progress", "completed", "cancelled"]).optional().describe("New status"),
       content: z.string().optional().describe("New content"),
       priority: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]).optional().describe("New priority"),
       explanation: z.string().describe("Why this todo is being updated"),
     }),
-    handler: async (ctx, { todoId, status, content, priority, explanation }) => {
+    execute: async (ctx, { todoId, status, content, priority, explanation }) => {
       console.log(`[TODO_UPDATE] ${explanation}`);
 
       const updates: any = {};
@@ -1836,27 +1844,49 @@ PRIORITY LEVELS:
 // GLM 4.7 via TogetherAI - Default model with tool calling support
 export const GLM_47_MODEL_ID = "zai-org/GLM-4.7";
 
-export function createAgentWithModel(modelId: ModelId = "grok-4-1-fast-reasoning") {
+export function createAgentWithModel(modelId: ModelId = "moonshotai/kimi-k2.5") {
   // Gemini 3 models support "thinking". When tool calling is enabled, Google requires
   // thought signatures to be preserved across steps; we rely on a pnpm patch that
   // preserves signature fields in @convex-dev/agent's message serialization.
   const isGeminiFlash = modelId === "google/gemini-3-flash-preview";
   const isMinimax = modelId.startsWith("minimax/") || modelId.startsWith("accounts/fireworks/models/minimax");
-  const isNvidiaKimi = modelId === "moonshotai/kimi-k2-thinking";
+<<<<<<< /Users/jeremyalston/Downloads/Component paradise/Gesthemane/gemini-chatbotz/convex/agent.ts
+  // WORKAROUND: Due to Convex validator caching, kimi-k2-thinking is used as an alias for kimi-k2.5
+  // The frontend maps kimi-k2.5 → kimi-k2-thinking to pass validation
+  const isKimiK25 = modelId === "moonshotai/kimi-k2-thinking" || modelId === "moonshotai/kimi-k2.5";
   const isFireworks = modelId.startsWith("accounts/fireworks/models/");
+=======
+  const isNvidiaKimi = modelId === "moonshotai/kimi-k2-thinking";
+  // Kimi K2.5 via AI Gateway (supports both Fireworks and Moonshot providers)
+  const isKimiK25 = modelId === "moonshotai/kimi-k2.5" || modelId === "accounts/fireworks/models/kimi-k2p5";
+  const isFireworks = modelId.startsWith("accounts/fireworks/models/") && !isKimiK25 && !isMinimax;
+>>>>>>> /Users/jeremyalston/.windsurf/worktrees/gemini-chatbotz/gemini-chatbotz-2ae2d1db/convex/agent.ts
   const isTogetherAI = modelId === "togetherai/glm-4.7" || modelId === "zai-org/GLM-4.7" || modelId === "z-ai/glm-4.7";
   const isXai = modelId === "grok-4-1-fast-reasoning" || modelId === "grok-4-1-fast-non-reasoning";
 
   // Route to appropriate provider
+  // Kimi K2.5 uses Vercel AI Gateway for automatic provider routing (Moonshot/Fireworks)
+  console.log(`[createAgentWithModel] modelId=${modelId}, isKimiK25=${isKimiK25}`);
   const languageModel = isXai
     ? xai(modelId as XaiModelId)
     : isTogetherAI
       ? togetherai(GLM_47_MODEL_ID)
-      : isNvidiaKimi
-        ? nvidia.chat(modelId)
+<<<<<<< /Users/jeremyalston/Downloads/Component paradise/Gesthemane/gemini-chatbotz/convex/agent.ts
+      : isKimiK25
+        ? openrouter("moonshotai/kimi-k2.5" as OpenRouterModelId)
         : isFireworks
           ? fireworks(modelId)
           : openrouter(modelId as OpenRouterModelId);
+=======
+      : isNvidiaKimi
+        ? nvidia.chat(modelId)
+        : isKimiK25
+          ? gateway("moonshotai/kimi-k2.5")
+          : isFireworks
+            ? fireworks.chat(modelId)
+            : openrouter(modelId as OpenRouterModelId);
+  console.log(`[createAgentWithModel] languageModel.provider=${languageModel.provider}, modelId=${languageModel.modelId}`);
+>>>>>>> /Users/jeremyalston/.windsurf/worktrees/gemini-chatbotz/gemini-chatbotz-2ae2d1db/convex/agent.ts
 
   // MiniMax models - include coding and search tools, exclude complex multi-step flight tools
   const minimaxTools = {
@@ -1884,8 +1914,60 @@ export function createAgentWithModel(modelId: ModelId = "grok-4-1-fast-reasoning
     updateMemory: baseTools.updateMemory,
   };
 
+  // Kimi K2.5 via Fireworks - full tool set
+  const kimiTools = {
+    // Document/coding tools
+    createDocument: baseTools.createDocument,
+    updateDocument: baseTools.updateDocument,
+    // Search tools
+    webSearch: baseTools.webSearch,
+    searchPeople: baseTools.searchPeople,
+    searchCompanies: baseTools.searchCompanies,
+    exaGetContents: baseTools.exaGetContents,
+    exaFindSimilar: baseTools.exaFindSimilar,
+    exaAnswer: baseTools.exaAnswer,
+    // Utility tools
+    getWeather: baseTools.getWeather,
+    generateImage: baseTools.generateImage,
+    // Deepcrawl tools
+    deepcrawlGetMarkdown: baseTools.deepcrawlGetMarkdown,
+    deepcrawlReadUrl: baseTools.deepcrawlReadUrl,
+    // Memory tools
+    addMemory: baseTools.addMemory,
+    listMemories: baseTools.listMemories,
+    searchMemories: baseTools.searchMemories,
+    removeMemory: baseTools.removeMemory,
+    updateMemory: baseTools.updateMemory,
+    // Flight tools
+    displayFlightStatus: baseTools.displayFlightStatus,
+    searchFlights: baseTools.searchFlights,
+    selectSeats: baseTools.selectSeats,
+    createReservation: baseTools.createReservation,
+    authorizePayment: baseTools.authorizePayment,
+    verifyPayment: baseTools.verifyPayment,
+    displayBoardingPass: baseTools.displayBoardingPass,
+    // File analysis tools
+    analyzePDF: baseTools.analyzePDF,
+    analyzePDFStructured: baseTools.analyzePDFStructured,
+    analyzeImage: baseTools.analyzeImage,
+    analyzeMultipleFiles: baseTools.analyzeMultipleFiles,
+    // Hyperbrowser tools
+    hyperAgentTask: baseTools.hyperAgentTask,
+    hyperbrowserExtract: baseTools.hyperbrowserExtract,
+    hyperbrowserScrape: baseTools.hyperbrowserScrape,
+    createBrowserSession: baseTools.createBrowserSession,
+    // Sandbox tools
+    createSandbox: baseTools.createSandbox,
+    executeBash: baseTools.executeBash,
+    sandboxWriteFile: baseTools.sandboxWriteFile,
+    sandboxReadFile: baseTools.sandboxReadFile,
+    sandboxListFiles: baseTools.sandboxListFiles,
+    stopSandbox: baseTools.stopSandbox,
+    executeCode: baseTools.executeCode,
+  };
+
   // Select appropriate tools based on model
-  const tools = isMinimax ? minimaxTools : baseTools;
+  const tools = isMinimax ? minimaxTools : isKimiK25 ? kimiTools : baseTools;
 
   // Custom instructions for MiniMax models
   const minimaxInstructions = `You are a powerful AI assistant powered by MiniMax M2.1, optimized for coding and research.
@@ -1899,21 +1981,45 @@ You excel at:
 
 Use webSearch for research, createDocument for code/text artifacts, and memory tools to remember user context.`;
 
+  // Custom instructions for Kimi K2.5 via AI Gateway
+  const kimiInstructions = `You are Kimi K2.5, Moonshot AI's flagship agentic model. You are a powerful multi-modal AI assistant with strong reasoning, planning, and tool-use capabilities.
+
+Today's date is ${new Date().toLocaleDateString()}.
+
+You excel at:
+- Complex reasoning and multi-step problem solving
+- Code generation, debugging, and analysis
+- Web research and information synthesis
+- Document creation and editing
+- Flight booking and travel assistance
+- File analysis (PDFs, images)
+- Browser automation for complex web tasks
+
+When using tools:
+- Always provide all required parameters
+- For getWeather, provide latitude and longitude coordinates
+- For web searches, use webSearch with clear queries
+- For document creation, use createDocument with appropriate type (text, code, sheet)
+
+Be concise and focused in your responses. Use tools proactively to help users.`;
+
   return new Agent(components.agent, {
     name: `Agent (${modelId})`,
     languageModel,
     instructions: isMinimax
       ? minimaxInstructions
-      : isGeminiFlash
-        ? baseInstructions + `\n\n<model_constraints>
+      : isKimiK25
+        ? kimiInstructions
+        : isGeminiFlash
+          ? baseInstructions + `\n\n<model_constraints>
 You are running on Gemini 3 Flash.
 - Complete tasks efficiently with minimal tool calls
 - If a tool call fails, explain what happened and suggest alternatives
 </model_constraints>`
-        : baseInstructions,
+          : baseInstructions,
     tools,
-    // MiniMax: 5 steps max, all others: 64 to support iterative search
-    maxSteps: isMinimax ? 5 : 64,
+    // MiniMax: 5 steps max, Kimi: 32 steps, all others: 64 to support iterative search
+    maxSteps: isMinimax ? 5 : isKimiK25 ? 32 : 64,
   });
 }
 

@@ -107,3 +107,58 @@ export const testGLM47FunctionCalling = action({
     }
   },
 });
+
+/**
+ * Test Kimi K2.5 via direct HTTP to Fireworks (bypasses AI SDK bundling issues)
+ * Run via Convex CLI: npx convex run testGLM47:testKimiDirect
+ */
+export const testKimiDirect = action({
+  args: {
+    prompt: v.optional(v.string()),
+  },
+  handler: async (_ctx, { prompt = "Hello, just say hi in one word" }) => {
+    console.log("[TEST KIMI DIRECT] Starting direct HTTP test to Fireworks...");
+    
+    const apiKey = process.env.FIREWORKS_API_KEY;
+    if (!apiKey) {
+      return { success: false, error: "FIREWORKS_API_KEY not set" };
+    }
+    
+    try {
+      const response = await fetch("https://api.fireworks.ai/inference/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "accounts/fireworks/models/kimi-k2p5",
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 100,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { success: false, error: `Fireworks API error: ${response.status} - ${errorText}` };
+      }
+
+      const data = await response.json();
+      console.log("[TEST KIMI DIRECT] ✅ Success! Response:", data.choices[0].message.content);
+      
+      return {
+        success: true,
+        modelId: "accounts/fireworks/models/kimi-k2p5",
+        provider: "Fireworks (direct HTTP)",
+        response: data.choices[0].message.content,
+        usage: data.usage,
+      };
+    } catch (error) {
+      console.error("[TEST KIMI DIRECT] ❌ Error:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  },
+});
