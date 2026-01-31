@@ -1,5 +1,6 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { wrapWithGemini3Support, isGemini3Model } from "./gemini3-middleware";
+import { gateway } from "ai";
 
 console.log('Initializing OpenRouter with API key present:', !!process.env.OPENROUTER_API_KEY);
 
@@ -9,6 +10,12 @@ const baseOpenRouter = createOpenRouter({
 
 // Wrapper that applies Gemini 3 middleware for thought signature preservation
 export const openrouter = (modelId: string, options?: Parameters<typeof baseOpenRouter>[1]) => {
+  // INTERCEPT: Route Kimi K2.5 through AI Gateway instead of OpenRouter
+  if (modelId === "moonshotai/kimi-k2.5") {
+    console.log(`[OpenRouter] Intercepting ${modelId} - routing to AI Gateway`);
+    return gateway("moonshotai/kimi-k2.5");
+  }
+
   const model = baseOpenRouter(modelId, options);
 
   // Apply Gemini 3 middleware for thought signature handling
