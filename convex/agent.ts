@@ -11,6 +11,7 @@ import { z } from "zod";
 // Vercel AI Gateway - routes to multiple providers with automatic fallback
 // Uses OIDC auth on Vercel deployments, or AI_GATEWAY_API_KEY env var
 const gateway = aiGateway;
+console.log("[agent.ts] Gateway imported successfully, type:", typeof gateway);
 
 const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
@@ -1850,43 +1851,39 @@ export function createAgentWithModel(modelId: ModelId = "moonshotai/kimi-k2.5") 
   // preserves signature fields in @convex-dev/agent's message serialization.
   const isGeminiFlash = modelId === "google/gemini-3-flash-preview";
   const isMinimax = modelId.startsWith("minimax/") || modelId.startsWith("accounts/fireworks/models/minimax");
-<<<<<<< /Users/jeremyalston/Downloads/Component paradise/Gesthemane/gemini-chatbotz/convex/agent.ts
-  // WORKAROUND: Due to Convex validator caching, kimi-k2-thinking is used as an alias for kimi-k2.5
-  // The frontend maps kimi-k2.5 → kimi-k2-thinking to pass validation
-  const isKimiK25 = modelId === "moonshotai/kimi-k2-thinking" || modelId === "moonshotai/kimi-k2.5";
-  const isFireworks = modelId.startsWith("accounts/fireworks/models/");
-=======
   const isNvidiaKimi = modelId === "moonshotai/kimi-k2-thinking";
   // Kimi K2.5 via AI Gateway (supports both Fireworks and Moonshot providers)
   const isKimiK25 = modelId === "moonshotai/kimi-k2.5" || modelId === "accounts/fireworks/models/kimi-k2p5";
   const isFireworks = modelId.startsWith("accounts/fireworks/models/") && !isKimiK25 && !isMinimax;
->>>>>>> /Users/jeremyalston/.windsurf/worktrees/gemini-chatbotz/gemini-chatbotz-2ae2d1db/convex/agent.ts
   const isTogetherAI = modelId === "togetherai/glm-4.7" || modelId === "zai-org/GLM-4.7" || modelId === "z-ai/glm-4.7";
   const isXai = modelId === "grok-4-1-fast-reasoning" || modelId === "grok-4-1-fast-non-reasoning";
 
   // Route to appropriate provider
   // Kimi K2.5 uses Vercel AI Gateway for automatic provider routing (Moonshot/Fireworks)
   console.log(`[createAgentWithModel] modelId=${modelId}, isKimiK25=${isKimiK25}`);
-  const languageModel = isXai
-    ? xai(modelId as XaiModelId)
-    : isTogetherAI
-      ? togetherai(GLM_47_MODEL_ID)
-<<<<<<< /Users/jeremyalston/Downloads/Component paradise/Gesthemane/gemini-chatbotz/convex/agent.ts
-      : isKimiK25
-        ? openrouter("moonshotai/kimi-k2.5" as OpenRouterModelId)
-        : isFireworks
-          ? fireworks(modelId)
-          : openrouter(modelId as OpenRouterModelId);
-=======
-      : isNvidiaKimi
-        ? nvidia.chat(modelId)
-        : isKimiK25
-          ? gateway("moonshotai/kimi-k2.5")
-          : isFireworks
-            ? fireworks.chat(modelId)
-            : openrouter(modelId as OpenRouterModelId);
+  
+  let languageModel;
+  if (isXai) {
+    console.log("[createAgentWithModel] Using xai provider");
+    languageModel = xai(modelId as XaiModelId);
+  } else if (isTogetherAI) {
+    console.log("[createAgentWithModel] Using togetherai provider");
+    languageModel = togetherai(GLM_47_MODEL_ID);
+  } else if (isNvidiaKimi) {
+    console.log("[createAgentWithModel] Using nvidia provider");
+    languageModel = nvidia.chat(modelId);
+  } else if (isKimiK25) {
+    console.log("[createAgentWithModel] Using AI Gateway for Kimi K2.5");
+    languageModel = gateway("moonshotai/kimi-k2.5");
+  } else if (isFireworks) {
+    console.log("[createAgentWithModel] Using fireworks provider");
+    languageModel = fireworks.chat(modelId);
+  } else {
+    console.log("[createAgentWithModel] Using openrouter provider");
+    languageModel = openrouter(modelId as OpenRouterModelId);
+  }
+  
   console.log(`[createAgentWithModel] languageModel.provider=${languageModel.provider}, modelId=${languageModel.modelId}`);
->>>>>>> /Users/jeremyalston/.windsurf/worktrees/gemini-chatbotz/gemini-chatbotz-2ae2d1db/convex/agent.ts
 
   // MiniMax models - include coding and search tools, exclude complex multi-step flight tools
   const minimaxTools = {

@@ -210,10 +210,14 @@ export const sendMessage = action({
     attachments: v.optional(v.array(fileAttachmentValidator)),
   },
   handler: async (ctx, { threadId, prompt, userId, modelId, attachments }) => {
+    console.log(`[sendMessage] DEPLOYMENT v6 - START - modelId: ${modelId}, type: ${typeof modelId}`);
+    
     // Initialize Braintrust (safe no-op if no API key)
     initBraintrust();
 
+    console.log(`[sendMessage] About to call createAgentWithModel with: ${modelId}`);
     const agent: Agent = modelId ? createAgentWithModel(modelId as any) : flightAgent;
+    console.log(`[sendMessage] Agent created successfully`);
     
     // Validate threadId is a valid Convex ID format (not a UUID)
     // If it's a UUID (legacy format), create a new thread instead
