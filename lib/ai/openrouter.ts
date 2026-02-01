@@ -86,7 +86,7 @@ export interface ModelDefinition {
 export const OPENROUTER_MODELS: ModelDefinition[] = [
   {
     id: "z-ai/glm-4.7",
-    name: "GLM 4.7 (Default)",
+    name: "GLM-4.7",
     provider: "TogetherAI",
     description: "358.5B parameter model with 202K context. Excellent for tool calling, JSON mode, and agentic workflows. $0.45/M in, $2.00/M out.",
     contextLength: 202800,
