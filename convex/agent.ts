@@ -1,17 +1,19 @@
-// Force rebundle - v4 (AI Gateway with debug)
+// Force rebundle - v6 (just-bash tools integration)
 import { Agent, createTool } from "@convex-dev/agent";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createTogetherAI } from "@ai-sdk/togetherai";
 import { createXai } from "@ai-sdk/xai";
-import { gateway as aiGateway } from "ai";
+import { createFireworks } from "@ai-sdk/fireworks";
+import { createGateway } from "ai";
 import { components, internal, api } from "./_generated/api";
 import { z } from "zod";
 
 // Vercel AI Gateway - routes to multiple providers with automatic fallback
-// Uses OIDC auth on Vercel deployments, or AI_GATEWAY_API_KEY env var
-const gateway = aiGateway;
-console.log("[agent.ts] Gateway imported successfully, type:", typeof gateway);
+// Requires AI_GATEWAY_API_KEY env var for non-Vercel deployments
+const gateway = createGateway({
+  apiKey: process.env.AI_GATEWAY_API_KEY,
+});
 
 const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
@@ -22,7 +24,12 @@ const nvidia = createOpenAI({
   apiKey: process.env.NVIDIA_API_KEY,
 });
 
-// Use OpenAI-compatible provider for Fireworks to avoid bundled AI SDK version issues
+// Native Fireworks provider - properly handles tool schemas for Kimi K2.5
+const fireworksNative = createFireworks({
+  apiKey: process.env.FIREWORKS_API_KEY,
+});
+
+// OpenAI-compatible Fireworks provider (legacy, for other models)
 const fireworks = createOpenAI({
   baseURL: "https://api.fireworks.ai/inference/v1",
   apiKey: process.env.FIREWORKS_API_KEY,
@@ -999,73 +1006,67 @@ Use this when you need structured, parseable output from a PDF.`,
     },
   }),
   // ==========================================================================
-  // Hyperbrowser Tools (Browser Automation with Live Preview)
+  // Kernel Browser Tools (Browser Automation with Live Preview)
+  // Replaces Hyperbrowser with OnKernel SDK for better compatibility
   // ==========================================================================
-  hyperAgentTask: createTool({
-    description: `Execute a multi-step browser automation task using Hyperbrowser HyperAgent.
+  kernelCreateBrowser: createTool({
+    description: `Create a browser session for automation using OnKernel.
 Best for:
 - JS-rendered or protected websites that block simple fetch
 - Complex multi-step workflows (clicking, typing, navigation)
-- Sites with CAPTCHAs or bot protection
 - Scraping dynamic SPAs and React apps
+- Sites with bot protection
 
-Returns: finalResult, step trace, and liveUrl for streaming preview.
+Returns: sessionId and liveUrl for streaming preview.
 The liveUrl can be embedded to watch the browser session in real-time.`,
     inputSchema: z.object({
-      task: z.string().describe("Natural language description of what to do in the browser"),
-      llm: z.string().optional().describe("LLM to use: 'gpt-4o', 'gpt-4o-mini', 'claude-3.5-sonnet' (default: gpt-4o)"),
-      maxSteps: z.number().optional().describe("Max browser actions to take (default: 20, increase for complex tasks)"),
-      sessionId: z.string().optional().describe("Reuse existing browser session for multi-step workflows"),
-      keepBrowserOpen: z.boolean().optional().describe("Keep browser open after task (for follow-up tasks)"),
+      stealth: z.boolean().optional().describe("Use stealth mode to avoid detection (default: true)"),
+      headless: z.boolean().optional().describe("Run headless (no UI) or headed (default: false, shows browser)"),
     }),
     execute: async (ctx, args) => {
-      const result = await ctx.runAction(internal.hyperbrowser.hyperAgentTask, args);
+      const result = await ctx.runAction(internal.kernel.createBrowserSession, args);
       return result;
     },
   }),
-  hyperbrowserExtract: createTool({
-    description: `Extract structured content from URLs using Hyperbrowser.
-Supports JS-rendered pages that simple fetch cannot handle.
-Use for:
-- Extracting data from dynamic websites
-- Scraping React/Vue/Angular apps
-- Getting content from sites requiring JavaScript`,
+  kernelPlaywrightExecute: createTool({
+    description: `Execute Playwright code in a browser session.
+Has access to 'page', 'context', and 'browser' objects.
+
+Examples:
+- Navigate: await page.goto('https://example.com')
+- Click: await page.click('button')
+- Type: await page.fill('input[name="email"]', 'user@example.com')
+- Extract: return await page.textContent('h1')
+- Screenshot: await page.screenshot({ path: '/tmp/screenshot.png' })
+
+Always return the requested data from your code execution.`,
     inputSchema: z.object({
-      urls: z.array(z.string()).describe("URLs to extract content from"),
-      prompt: z.string().optional().describe("What specific data to extract"),
-      schema: z.any().optional().describe("JSON schema for structured extraction"),
-      onlyMainContent: z.boolean().optional().describe("Extract only main content, skip nav/footer (default: true)"),
+      sessionId: z.string().describe("Browser session ID from kernelCreateBrowser"),
+      code: z.string().describe("JavaScript/Playwright code to execute"),
     }),
     execute: async (ctx, args) => {
-      const result = await ctx.runAction(internal.hyperbrowser.hyperbrowserExtract, args);
+      const result = await ctx.runAction(internal.kernel.playwrightExecute, args);
       return result;
     },
   }),
-  hyperbrowserScrape: createTool({
-    description: `Simple page scraping with JS rendering support.
-Faster than HyperAgent for straightforward scraping tasks.
-Returns markdown content from the page.`,
+  kernelNavigate: createTool({
+    description: `Navigate to a URL in a browser session.`,
     inputSchema: z.object({
-      url: z.string().describe("URL to scrape"),
-      onlyMainContent: z.boolean().optional().describe("Extract only main content (default: true)"),
-      waitFor: z.number().optional().describe("Wait time in ms for dynamic content (default: 2000)"),
+      sessionId: z.string().describe("Browser session ID"),
+      url: z.string().describe("URL to navigate to"),
     }),
     execute: async (ctx, args) => {
-      const result = await ctx.runAction(internal.hyperbrowser.hyperbrowserScrape, args);
+      const result = await ctx.runAction(internal.kernel.navigate, args);
       return result;
     },
   }),
-  createBrowserSession: createTool({
-    description: `Create a browser session for manual control or multi-step workflows.
-Returns sessionId and liveUrl for streaming preview.
-Use this when you need to:
-- Perform multiple HyperAgent tasks on the same browser
-- Keep browser state (cookies, login) across operations`,
+  kernelGetPageContent: createTool({
+    description: `Get the HTML content of the current page in a browser session.`,
     inputSchema: z.object({
-      viewOnly: z.boolean().optional().describe("If true, live view is read-only (default: false)"),
+      sessionId: z.string().describe("Browser session ID"),
     }),
     execute: async (ctx, args) => {
-      const result = await ctx.runAction(internal.hyperbrowser.createBrowserSession, args);
+      const result = await ctx.runAction(internal.kernel.getPageContent, args);
       return result;
     },
   }),
@@ -1840,6 +1841,49 @@ PRIORITY LEVELS:
       return result;
     },
   }),
+  // just-bash tools - secure sandboxed bash environment for AI agents
+  bashExecute: createTool({
+    description: "Execute a bash command in a secure sandboxed environment. Supports file operations, text processing, data manipulation, and shell utilities. The filesystem is isolated and in-memory.",
+    inputSchema: z.object({
+      command: z.string().describe("The bash command to execute"),
+      files: z.record(z.string()).optional().describe("Optional files to create before execution, as path:content pairs"),
+    }),
+    execute: async (ctx, { command, files }) => {
+      const result = await ctx.runAction((api as any).bashActions.executeBash, {
+        command,
+        files: files || {},
+      });
+      return result;
+    },
+  }),
+  bashWriteFile: createTool({
+    description: "Write content to a file in the bash sandbox filesystem",
+    inputSchema: z.object({
+      path: z.string().describe("File path to write to"),
+      content: z.string().describe("Content to write to the file"),
+    }),
+    execute: async (ctx, { path, content }) => {
+      const result = await ctx.runAction((api as any).bashActions.bashWriteFile, {
+        path,
+        content,
+      });
+      return result;
+    },
+  }),
+  bashReadFile: createTool({
+    description: "Read content from a file in the bash sandbox filesystem",
+    inputSchema: z.object({
+      path: z.string().describe("File path to read from"),
+      files: z.record(z.string()).optional().describe("Files that exist in the sandbox"),
+    }),
+    execute: async (ctx, { path, files }) => {
+      const result = await ctx.runAction((api as any).bashActions.bashReadFile, {
+        path,
+        files: files || {},
+      });
+      return result;
+    },
+  }),
 };
 
 // GLM 4.7 via TogetherAI - Default model with tool calling support
@@ -1851,38 +1895,24 @@ export function createAgentWithModel(modelId: ModelId = "moonshotai/kimi-k2.5") 
   // preserves signature fields in @convex-dev/agent's message serialization.
   const isGeminiFlash = modelId === "google/gemini-3-flash-preview";
   const isMinimax = modelId.startsWith("minimax/") || modelId.startsWith("accounts/fireworks/models/minimax");
-  const isNvidiaKimi = modelId === "moonshotai/kimi-k2-thinking";
-  // Kimi K2.5 via AI Gateway (supports both Fireworks and Moonshot providers)
-  const isKimiK25 = modelId === "moonshotai/kimi-k2.5" || modelId === "accounts/fireworks/models/kimi-k2p5";
-  const isFireworks = modelId.startsWith("accounts/fireworks/models/") && !isKimiK25 && !isMinimax;
+  // Kimi K2.5 via native Fireworks SDK (proper tool schema support)
+  const isKimiK25 = modelId === "moonshotai/kimi-k2.5";
+  const isFireworks = modelId.startsWith("accounts/fireworks/models/") && !isMinimax;
   const isTogetherAI = modelId === "togetherai/glm-4.7" || modelId === "zai-org/GLM-4.7" || modelId === "z-ai/glm-4.7";
   const isXai = modelId === "grok-4-1-fast-reasoning" || modelId === "grok-4-1-fast-non-reasoning";
 
   // Route to appropriate provider
-  // Kimi K2.5 uses Vercel AI Gateway for automatic provider routing (Moonshot/Fireworks)
+  // Kimi K2.5 routes to Fireworks (FIREWORKS_API_KEY is set on Convex)
   console.log(`[createAgentWithModel] modelId=${modelId}, isKimiK25=${isKimiK25}`);
-  
-  let languageModel;
-  if (isXai) {
-    console.log("[createAgentWithModel] Using xai provider");
-    languageModel = xai(modelId as XaiModelId);
-  } else if (isTogetherAI) {
-    console.log("[createAgentWithModel] Using togetherai provider");
-    languageModel = togetherai(GLM_47_MODEL_ID);
-  } else if (isNvidiaKimi) {
-    console.log("[createAgentWithModel] Using nvidia provider");
-    languageModel = nvidia.chat(modelId);
-  } else if (isKimiK25) {
-    console.log("[createAgentWithModel] Using AI Gateway for Kimi K2.5");
-    languageModel = gateway("moonshotai/kimi-k2.5");
-  } else if (isFireworks) {
-    console.log("[createAgentWithModel] Using fireworks provider");
-    languageModel = fireworks.chat(modelId);
-  } else {
-    console.log("[createAgentWithModel] Using openrouter provider");
-    languageModel = openrouter(modelId as OpenRouterModelId);
-  }
-  
+  const languageModel = isXai
+    ? xai(modelId as XaiModelId)
+    : isTogetherAI
+      ? togetherai(GLM_47_MODEL_ID)
+      : isKimiK25
+        ? fireworksNative("accounts/fireworks/models/kimi-k2p5")
+        : isFireworks
+          ? fireworks.chat(modelId)
+          : openrouter(modelId as OpenRouterModelId);
   console.log(`[createAgentWithModel] languageModel.provider=${languageModel.provider}, modelId=${languageModel.modelId}`);
 
   // MiniMax models - include coding and search tools, exclude complex multi-step flight tools
@@ -1911,30 +1941,30 @@ export function createAgentWithModel(modelId: ModelId = "moonshotai/kimi-k2.5") 
     updateMemory: baseTools.updateMemory,
   };
 
-  // Kimi K2.5 via Fireworks - full tool set
+  // Kimi K2.5 via Fireworks - full tool set (native SDK with proper tool schema support)
   const kimiTools = {
-    // Document/coding tools
+    // Core utility tools
+    getWeather: baseTools.getWeather,
+    webSearch: baseTools.webSearch,
+    generateImage: baseTools.generateImage,
+    // Document tools
     createDocument: baseTools.createDocument,
     updateDocument: baseTools.updateDocument,
     // Search tools
-    webSearch: baseTools.webSearch,
     searchPeople: baseTools.searchPeople,
     searchCompanies: baseTools.searchCompanies,
     exaGetContents: baseTools.exaGetContents,
     exaFindSimilar: baseTools.exaFindSimilar,
     exaAnswer: baseTools.exaAnswer,
-    // Utility tools
-    getWeather: baseTools.getWeather,
-    generateImage: baseTools.generateImage,
-    // Deepcrawl tools
-    deepcrawlGetMarkdown: baseTools.deepcrawlGetMarkdown,
-    deepcrawlReadUrl: baseTools.deepcrawlReadUrl,
     // Memory tools
     addMemory: baseTools.addMemory,
     listMemories: baseTools.listMemories,
     searchMemories: baseTools.searchMemories,
     removeMemory: baseTools.removeMemory,
     updateMemory: baseTools.updateMemory,
+    // Deepcrawl tools
+    deepcrawlGetMarkdown: baseTools.deepcrawlGetMarkdown,
+    deepcrawlReadUrl: baseTools.deepcrawlReadUrl,
     // Flight tools
     displayFlightStatus: baseTools.displayFlightStatus,
     searchFlights: baseTools.searchFlights,
@@ -1948,22 +1978,19 @@ export function createAgentWithModel(modelId: ModelId = "moonshotai/kimi-k2.5") 
     analyzePDFStructured: baseTools.analyzePDFStructured,
     analyzeImage: baseTools.analyzeImage,
     analyzeMultipleFiles: baseTools.analyzeMultipleFiles,
-    // Hyperbrowser tools
-    hyperAgentTask: baseTools.hyperAgentTask,
-    hyperbrowserExtract: baseTools.hyperbrowserExtract,
-    hyperbrowserScrape: baseTools.hyperbrowserScrape,
-    createBrowserSession: baseTools.createBrowserSession,
-    // Sandbox tools
-    createSandbox: baseTools.createSandbox,
-    executeBash: baseTools.executeBash,
-    sandboxWriteFile: baseTools.sandboxWriteFile,
-    sandboxReadFile: baseTools.sandboxReadFile,
-    sandboxListFiles: baseTools.sandboxListFiles,
-    stopSandbox: baseTools.stopSandbox,
-    executeCode: baseTools.executeCode,
+    // just-bash tools - secure sandboxed bash environment
+    bashExecute: baseTools.bashExecute,
+    bashWriteFile: baseTools.bashWriteFile,
+    bashReadFile: baseTools.bashReadFile,
+    // Kernel browser tools - OnKernel SDK for browser automation
+    kernelCreateBrowser: baseTools.kernelCreateBrowser,
+    kernelPlaywrightExecute: baseTools.kernelPlaywrightExecute,
+    kernelNavigate: baseTools.kernelNavigate,
+    kernelGetPageContent: baseTools.kernelGetPageContent,
   };
 
   // Select appropriate tools based on model
+  // Kimi K2.5 with native Fireworks SDK supports tool calling
   const tools = isMinimax ? minimaxTools : isKimiK25 ? kimiTools : baseTools;
 
   // Custom instructions for MiniMax models

@@ -21,12 +21,14 @@ import type * as crons from "../crons.js";
 import type * as debugMessages from "../debugMessages.js";
 import type * as deepcrawl from "../deepcrawl.js";
 import type * as files from "../files.js";
+import type * as fireworksKimi from "../fireworksKimi.js";
 import type * as http from "../http.js";
 import type * as hyperbrowser from "../hyperbrowser.js";
 import type * as mcp from "../mcp.js";
 import type * as reservations from "../reservations.js";
 import type * as sandbox from "../sandbox.js";
 import type * as testGLM47 from "../testGLM47.js";
+import type * as testGateway from "../testGateway.js";
 import type * as todos from "../todos.js";
 
 import type {
@@ -49,12 +51,14 @@ declare const fullApi: ApiFromModules<{
   debugMessages: typeof debugMessages;
   deepcrawl: typeof deepcrawl;
   files: typeof files;
+  fireworksKimi: typeof fireworksKimi;
   http: typeof http;
   hyperbrowser: typeof hyperbrowser;
   mcp: typeof mcp;
   reservations: typeof reservations;
   sandbox: typeof sandbox;
   testGLM47: typeof testGLM47;
+  testGateway: typeof testGateway;
   todos: typeof todos;
 }>;
 

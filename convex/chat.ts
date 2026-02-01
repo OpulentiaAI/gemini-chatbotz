@@ -122,10 +122,17 @@ async function preAnalyzeFiles(
   return `\n\n---\n📎 **PRE-ANALYZED FILE CONTENT:**\n${analysisResults.join("\n\n")}\n\n---\nThe above content was extracted from the user's uploaded files. Use this information to answer their question.\n---\n`;
 }
 
+// Normalize model ID to strip provider suffixes (e.g., ":free" from "moonshotai/kimi-k2.5:free")
+function normalizeModelId(modelId?: string): string | undefined {
+  if (!modelId) return undefined;
+  return modelId.split(':')[0];
+}
+
 function selectAgent(modelId?: string): Agent {
-  if (!modelId) return createAgentWithModel(DEFAULT_MODEL);
-  if (modelId.includes("gpt-4o-mini")) return quickAgent;
-  return createAgentWithModel(modelId as any);
+  const normalizedModelId = normalizeModelId(modelId);
+  if (!normalizedModelId) return createAgentWithModel(DEFAULT_MODEL);
+  if (normalizedModelId.includes("gpt-4o-mini")) return quickAgent;
+  return createAgentWithModel(normalizedModelId as any);
 }
 
 export const testModelValidation = action({
@@ -138,6 +145,23 @@ export const testModelValidation = action({
       success: true, 
       modelId: modelId,
       timestamp: Date.now()
+    };
+  },
+});
+
+// Simple env var check
+export const checkEnvVars = action({
+  args: {},
+  handler: async () => {
+    const gatewayKey = process.env.AI_GATEWAY_API_KEY;
+    const fireworksKey = process.env.FIREWORKS_API_KEY;
+    const openrouterKey = process.env.OPENROUTER_API_KEY;
+    
+    return {
+      AI_GATEWAY_API_KEY: gatewayKey ? `${gatewayKey.substring(0, 10)}...` : "NOT SET",
+      FIREWORKS_API_KEY: fireworksKey ? `${fireworksKey.substring(0, 10)}...` : "NOT SET",
+      OPENROUTER_API_KEY: openrouterKey ? `${openrouterKey.substring(0, 10)}...` : "NOT SET",
+      allKeys: Object.keys(process.env).filter(k => k.includes("API") || k.includes("KEY")).sort(),
     };
   },
 });
@@ -210,14 +234,18 @@ export const sendMessage = action({
     attachments: v.optional(v.array(fileAttachmentValidator)),
   },
   handler: async (ctx, { threadId, prompt, userId, modelId, attachments }) => {
-    console.log(`[sendMessage] DEPLOYMENT v6 - START - modelId: ${modelId}, type: ${typeof modelId}`);
-    
-    // Initialize Braintrust (safe no-op if no API key)
-    initBraintrust();
+    try {
+      // DEPLOY VERIFICATION v6 - Fireworks Kimi K2.5
+      console.log(`[sendMessage] DEPLOY v6 - modelId=${modelId}`);
+      
+      // Initialize Braintrust (safe no-op if no API key)
+      initBraintrust();
 
-    console.log(`[sendMessage] About to call createAgentWithModel with: ${modelId}`);
-    const agent: Agent = modelId ? createAgentWithModel(modelId as any) : flightAgent;
-    console.log(`[sendMessage] Agent created successfully`);
+      // Normalize model ID to strip provider suffixes (e.g., ":free" from "moonshotai/kimi-k2.5:free")
+      const normalizedModelId = normalizeModelId(modelId);
+      console.log(`[sendMessage] Normalized modelId: ${normalizedModelId} (original: ${modelId})`);
+      
+      const agent: Agent = normalizedModelId ? createAgentWithModel(normalizedModelId as any) : flightAgent;
     
     // Validate threadId is a valid Convex ID format (not a UUID)
     // If it's a UUID (legacy format), create a new thread instead
@@ -285,6 +313,11 @@ export const sendMessage = action({
       toolResults: result.toolResults,
       attachments: attachments || [],
     };
+    } catch (error: any) {
+      console.error(`[sendMessage] Error:`, error.message);
+      console.error(`[sendMessage] Stack:`, error.stack?.substring(0, 500));
+      throw error;
+    }
   },
 });
 
@@ -301,7 +334,11 @@ export const streamMessage = action({
     try {
       initBraintrust();
 
-      const agent: Agent = modelId ? createAgentWithModel(modelId as any) : flightAgent;
+      // Normalize model ID to strip provider suffixes (e.g., ":free" from "moonshotai/kimi-k2.5:free")
+      const normalizedModelId = normalizeModelId(modelId);
+      console.log(`[streamMessage] Normalized modelId: ${normalizedModelId} (original: ${modelId})`);
+
+      const agent: Agent = normalizedModelId ? createAgentWithModel(normalizedModelId as any) : flightAgent;
       
       // Validate threadId is a valid Convex ID format (not a UUID)
       // If it's a UUID (legacy format), create a new thread instead
@@ -428,12 +465,16 @@ export const createThreadV2 = action({
     modelId: v.string(),
   },
   handler: async (ctx, { userId, modelId }): Promise<{ threadId: string }> => {
-    // Runtime validation against whitelist
-    if (!SUPPORTED_MODELS.has(modelId)) {
+    // Normalize model ID to strip provider suffixes (e.g., ":free" from "moonshotai/kimi-k2.5:free")
+    const normalizedModelId = normalizeModelId(modelId);
+    console.log(`[createThreadV2] Normalized modelId: ${normalizedModelId} (original: ${modelId})`);
+    
+    // Runtime validation against whitelist (use normalized model ID)
+    if (!SUPPORTED_MODELS.has(normalizedModelId || modelId)) {
       throw new Error(`Unsupported model: ${modelId}. Supported models: ${Array.from(SUPPORTED_MODELS).join(", ")}`);
     }
     
-    const agent = createAgentWithModel(modelId as any);
+    const agent = createAgentWithModel((normalizedModelId || modelId) as any);
     const { threadId } = await agent.createThread(ctx, {
       userId: userId ?? "anonymous",
     });

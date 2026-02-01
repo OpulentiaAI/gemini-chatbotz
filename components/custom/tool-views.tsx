@@ -110,14 +110,15 @@ export function ToolView({ toolName, args, result, status }: ToolViewProps) {
     case "tavilyCrawl":
     case "tavilyMap":
       return <TavilyToolView toolName={toolName} args={args} result={result} isLoading={isLoading} />;
-    // Hyperbrowser Tools with Live Preview
-    case "hyperAgentTask":
-      return <HyperAgentView args={args} result={result} isLoading={isLoading} />;
-    case "hyperbrowserExtract":
-    case "hyperbrowserScrape":
-      return <HyperbrowserScrapeView toolName={toolName} args={args} result={result} isLoading={isLoading} />;
-    case "createBrowserSession":
-      return <BrowserSessionView args={args} result={result} isLoading={isLoading} />;
+    // Kernel Browser Tools (OnKernel SDK)
+    case "kernelCreateBrowser":
+      return <KernelBrowserSessionView args={args} result={result} isLoading={isLoading} />;
+    case "kernelPlaywrightExecute":
+      return <KernelPlaywrightView args={args} result={result} isLoading={isLoading} />;
+    case "kernelNavigate":
+      return <KernelNavigateView args={args} result={result} isLoading={isLoading} />;
+    case "kernelGetPageContent":
+      return <KernelContentView args={args} result={result} isLoading={isLoading} />;
     // Browserbase Tools (BrowseGPT parity)
     case "browserbaseCreateSession":
     case "createSession":
@@ -869,6 +870,188 @@ function HyperAgentView({ args, result, isLoading }: { args: Record<string, unkn
           </SnippetTabsContent>
           <SnippetTabsContent className="bg-chocolate-50 dark:bg-chocolate-900" value="raw">
             <pre className="text-xs whitespace-pre-wrap text-chocolate-700 dark:text-chocolate-200">{JSON.stringify(result, null, 2)}</pre>
+          </SnippetTabsContent>
+        </Snippet>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+// Kernel Browser Tool Views (OnKernel SDK)
+// =============================================================================
+
+function KernelBrowserSessionView({ args, result, isLoading }: { args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
+  const liveUrl = (result as any)?.liveUrl;
+  const sessionId = (result as any)?.sessionId;
+  const status = (result as any)?.status;
+
+  return (
+    <div className="rounded-xl border border-chocolate-200 dark:border-chocolate-700 bg-chocolate-50 dark:bg-chocolate-900 p-4 space-y-3">
+      <div className="flex items-center gap-2 text-chocolate-600 dark:text-chocolate-400">
+        <Monitor className="w-5 h-5" />
+        <span className="font-medium">Kernel Browser Session</span>
+        {status && (
+          <Status status={status === "created" ? "online" : "degraded"} className="text-xs px-2 py-0.5 ml-auto">
+            <StatusIndicator />
+            <StatusLabel>{status}</StatusLabel>
+          </Status>
+        )}
+      </div>
+
+      {isLoading && <LoadingIndicator label="Creating browser session..." />}
+
+      {sessionId && (
+        <div className="text-xs">
+          <span className="text-chocolate-500">Session ID:</span>{" "}
+          <code className="bg-chocolate-100 dark:bg-chocolate-800 px-1 py-0.5 rounded">{sessionId}</code>
+        </div>
+      )}
+
+      {liveUrl && <LivePreviewEmbed liveUrl={liveUrl} title="Kernel Browser Session" />}
+
+      {(result as any)?.error && (
+        <div className="text-xs text-red-500">Error: {(result as any).error}</div>
+      )}
+    </div>
+  );
+}
+
+function KernelPlaywrightView({ args, result, isLoading }: { args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
+  const code = args.code as string;
+  const executionResult = (result as any)?.result;
+  const error = (result as any)?.error;
+  const status = (result as any)?.status;
+
+  return (
+    <div className="rounded-xl border border-chocolate-200 dark:border-chocolate-700 bg-chocolate-50 dark:bg-chocolate-900 p-4 space-y-3">
+      <div className="flex items-center gap-2 text-chocolate-600 dark:text-chocolate-400">
+        <Code className="w-5 h-5" />
+        <span className="font-medium">Playwright Code Execution</span>
+        {status && (
+          <Status status={status === "success" ? "online" : "degraded"} className="text-xs px-2 py-0.5 ml-auto">
+            <StatusIndicator />
+            <StatusLabel>{status}</StatusLabel>
+          </Status>
+        )}
+      </div>
+
+      <Snippet className="bg-white/70 dark:bg-chocolate-950/60 border-chocolate-200 dark:border-chocolate-800" defaultValue="code">
+        <SnippetHeader className="bg-chocolate-100 dark:bg-chocolate-800">
+          <div className="text-xs font-medium text-chocolate-600 dark:text-chocolate-200">Code</div>
+        </SnippetHeader>
+        <SnippetTabsContent className="bg-chocolate-50 dark:bg-chocolate-900 max-h-32 overflow-auto" value="code">
+          <pre className="text-xs whitespace-pre-wrap text-chocolate-700 dark:text-chocolate-200">{code}</pre>
+        </SnippetTabsContent>
+      </Snippet>
+
+      {isLoading && <LoadingIndicator label="Executing Playwright code..." />}
+
+      {executionResult && (
+        <div className="p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg">
+          <p className="text-xs text-green-600 dark:text-green-400 font-medium mb-1">Result</p>
+          <pre className="text-xs whitespace-pre-wrap text-green-800 dark:text-green-200">{typeof executionResult === 'string' ? executionResult : JSON.stringify(executionResult, null, 2)}</pre>
+        </div>
+      )}
+
+      {error && (
+        <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-xs text-red-600 dark:text-red-400 font-medium mb-1">Error</p>
+          <pre className="text-xs whitespace-pre-wrap text-red-800 dark:text-red-200">{error}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function KernelNavigateView({ args, result, isLoading }: { args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
+  const url = args.url as string;
+  const pageResult = (result as any)?.result;
+  const status = (result as any)?.status;
+
+  return (
+    <div className="rounded-xl border border-chocolate-200 dark:border-chocolate-700 bg-chocolate-50 dark:bg-chocolate-900 p-4 space-y-3">
+      <div className="flex items-center gap-2 text-chocolate-600 dark:text-chocolate-400">
+        <Globe className="w-5 h-5" />
+        <span className="font-medium">Navigate to URL</span>
+        {status && (
+          <Status status={status === "success" ? "online" : "degraded"} className="text-xs px-2 py-0.5 ml-auto">
+            <StatusIndicator />
+            <StatusLabel>{status}</StatusLabel>
+          </Status>
+        )}
+      </div>
+
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-sm text-chocolate-600 dark:text-chocolate-400 hover:underline flex items-center gap-1"
+      >
+        <ExternalLink className="w-3 h-3" />
+        {url}
+      </a>
+
+      {isLoading && <LoadingIndicator label="Navigating..." />}
+
+      {pageResult && (
+        <div className="p-3 bg-chocolate-100 dark:bg-chocolate-800 rounded-lg">
+          <p className="text-xs text-chocolate-500 mb-1">Page Info</p>
+          <p className="text-sm text-chocolate-800 dark:text-chocolate-200">
+            {pageResult.title && <span className="font-medium">{pageResult.title}</span>}
+            {pageResult.url && <span className="text-chocolate-500 ml-2">({pageResult.url})</span>}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function KernelContentView({ args, result, isLoading }: { args: Record<string, unknown>; result?: Record<string, unknown>; isLoading: boolean }) {
+  const content = (result as any)?.content;
+  const status = (result as any)?.status;
+  const { openArtifact } = useArtifact();
+  const hasAutoOpened = useRef(false);
+
+  // Auto-open artifact when content is extracted
+  useEffect(() => {
+    if (content && !hasAutoOpened.current) {
+      hasAutoOpened.current = true;
+      openArtifact({
+        documentId: `kernel-content-${Date.now()}`,
+        title: "Page Content",
+        kind: "code",
+        content: typeof content === 'string' ? content : JSON.stringify(content, null, 2),
+        language: "html",
+        messageId: "",
+        status: "idle",
+      });
+    }
+  }, [content, openArtifact]);
+
+  return (
+    <div className="rounded-xl border border-chocolate-200 dark:border-chocolate-700 bg-chocolate-50 dark:bg-chocolate-900 p-4 space-y-3">
+      <div className="flex items-center gap-2 text-chocolate-600 dark:text-chocolate-400">
+        <FileText className="w-5 h-5" />
+        <span className="font-medium">Page Content</span>
+        {status && (
+          <Status status={status === "success" ? "online" : "degraded"} className="text-xs px-2 py-0.5 ml-auto">
+            <StatusIndicator />
+            <StatusLabel>{status}</StatusLabel>
+          </Status>
+        )}
+      </div>
+
+      {isLoading && <LoadingIndicator label="Extracting page content..." />}
+
+      {content && (
+        <Snippet className="bg-white/70 dark:bg-chocolate-950/60 border-chocolate-200 dark:border-chocolate-800" defaultValue="content">
+          <SnippetHeader className="bg-chocolate-100 dark:bg-chocolate-800">
+            <div className="text-xs font-medium text-chocolate-600 dark:text-chocolate-200">HTML Content</div>
+            <SnippetCopyButton className="text-chocolate-500 hover:text-chocolate-800" value={typeof content === 'string' ? content : JSON.stringify(content, null, 2)} />
+          </SnippetHeader>
+          <SnippetTabsContent className="bg-chocolate-50 dark:bg-chocolate-900 max-h-64 overflow-auto" value="content">
+            <pre className="text-xs whitespace-pre-wrap text-chocolate-700 dark:text-chocolate-200">{typeof content === 'string' ? content.slice(0, 5000) : JSON.stringify(content, null, 2)}</pre>
           </SnippetTabsContent>
         </Snippet>
       )}
