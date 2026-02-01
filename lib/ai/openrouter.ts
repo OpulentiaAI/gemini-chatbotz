@@ -397,7 +397,9 @@ export const OPENROUTER_MODELS: ModelDefinition[] = [
   },
 ];
 
-export const DEFAULT_MODEL: OpenRouterModelId = "moonshotai/kimi-k2.5";
+// TEMPORARY: Using GLM-4.7 as default until Convex deployment sync issue is resolved
+// Once deployments sync properly, switch back to: "moonshotai/kimi-k2.5"
+export const DEFAULT_MODEL: OpenRouterModelId = "z-ai/glm-4.7";
 export const DEFAULT_FAST_MODEL: OpenRouterModelId = "openai/gpt-4o-mini";
 export const DEFAULT_ARTIFACT_MODEL: OpenRouterModelId = "anthropic/claude-3.5-sonnet";
 
