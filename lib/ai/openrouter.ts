@@ -2,7 +2,7 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { wrapWithGemini3Support, isGemini3Model } from "./gemini3-middleware";
 import { gateway } from "ai";
 
-console.log('Initializing OpenRouter with API key present:', !!process.env.OPENROUTER_API_KEY);
+console.log('Initializing OpenRouter with API key present:', !!process.env.OPENROUTER_API_KEY, 'v2.0');
 
 const baseOpenRouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,

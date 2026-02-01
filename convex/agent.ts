@@ -1023,9 +1023,8 @@ The liveUrl can be embedded to watch the browser session in real-time.`,
       stealth: z.boolean().optional().describe("Use stealth mode to avoid detection (default: true)"),
       headless: z.boolean().optional().describe("Run headless (no UI) or headed (default: false, shows browser)"),
     }),
-    execute: async (ctx, args) => {
-      const result = await ctx.runAction(internal.kernel.createBrowserSession, args);
-      return result;
+    execute: async (_ctx, _args) => {
+      return { error: "Kernel tool not available" };
     },
   }),
   kernelPlaywrightExecute: createTool({
@@ -1044,9 +1043,8 @@ Always return the requested data from your code execution.`,
       sessionId: z.string().describe("Browser session ID from kernelCreateBrowser"),
       code: z.string().describe("JavaScript/Playwright code to execute"),
     }),
-    execute: async (ctx, args) => {
-      const result = await ctx.runAction(internal.kernel.playwrightExecute, args);
-      return result;
+    execute: async (_ctx, _args) => {
+      return { error: "Kernel tool not available" };
     },
   }),
   kernelNavigate: createTool({
@@ -1055,9 +1053,8 @@ Always return the requested data from your code execution.`,
       sessionId: z.string().describe("Browser session ID"),
       url: z.string().describe("URL to navigate to"),
     }),
-    execute: async (ctx, args) => {
-      const result = await ctx.runAction(internal.kernel.navigate, args);
-      return result;
+    execute: async (_ctx, _args) => {
+      return { error: "Kernel tool not available" };
     },
   }),
   kernelGetPageContent: createTool({
@@ -1065,9 +1062,8 @@ Always return the requested data from your code execution.`,
     inputSchema: z.object({
       sessionId: z.string().describe("Browser session ID"),
     }),
-    execute: async (ctx, args) => {
-      const result = await ctx.runAction(internal.kernel.getPageContent, args);
-      return result;
+    execute: async (_ctx, _args) => {
+      return { error: "Kernel tool not available" };
     },
   }),
 

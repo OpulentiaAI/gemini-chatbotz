@@ -102,6 +102,7 @@
     "input-otp": "^1.2.4",
     "jotai": "^2.15.1",
     "jsdom": "^27.3.0",
+    "just-bash": "^2.7.0",
     "lowlight": "^3.3.0",
     "lucide-react": "^0.446.0",
     "motion": "^12.23.24",
