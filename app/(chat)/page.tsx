@@ -1,4 +1,4 @@
-import { Chat } from "@/components/custom/chat";
+import { ChatInterface } from "@/components/chat/chat-interface";
 import { generateUUID } from "@/lib/utils";
 
 // Guest user ID for unauthenticated access
@@ -8,10 +8,9 @@ export default function Page() {
   const id = generateUUID();
 
   return (
-    <Chat
+    <ChatInterface
       key={id}
       id={id}
-      initialMessages={[]}
       userId={GUEST_USER_ID}
     />
   );

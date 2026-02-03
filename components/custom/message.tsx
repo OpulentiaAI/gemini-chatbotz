@@ -1,87 +1,61 @@
 "use client";
 
-import { motion } from "framer-motion";
-import type { ReactNode } from "react";
 import { memo } from "react";
-import { Streamdown } from "streamdown";
-
-import { BotIcon, UserIcon } from "./icons";
-import { PreviewAttachment } from "./preview-attachment";
+import { Message, MessageContent } from "@/components/chat/message";
+import { Response } from "@/components/chat/response";
 import { ToolView } from "./tool-views";
-import { 
-  ThreadImageGallery, 
-  extractImageAttachments,
-  extractImageParts,
-  type ThreadImageItem 
-} from "./thread-image";
-import { Reasoning, ReasoningTrigger, ReasoningContent } from "../ai-elements/reasoning";
-import { StreamingIndicator } from "../ai-elements/thinking-message";
-import BlurFade from "../ui/blur-fade";
+import { Reasoning, ReasoningTrigger, ReasoningContent } from "@/components/ai-elements/reasoning";
 
-// Types for attachments and tool invocations
+// Message part interface matching @convex-dev/agent
+interface MessagePart {
+  type: string;
+  text?: string;
+  toolCallId?: string;
+  toolName?: string;
+  name?: string; // Alternative tool name field
+  state?: string;
+  input?: Record<string, unknown>;
+  args?: Record<string, unknown>;
+  output?: unknown;
+  result?: unknown;
+  image?: string;
+  data?: string;
+  mimeType?: string;
+  url?: string;
+  // Reasoning fields
+  reasoning?: string;
+  thinking?: string;
+}
+
 interface MessageAttachment {
   url?: string;
   name?: string;
   contentType?: string;
   fileName?: string;
   mediaType?: string;
-  base64?: string;
-  payload?: string;
-  file_id?: string;
 }
 
-// Message part from @convex-dev/agent - can be text, tool, reasoning, or image
-interface MessagePart {
-  type: string;
-  text?: string;
-  toolCallId?: string;
-  state?: string;
-  input?: Record<string, unknown>;
-  output?: unknown;
-  // Image part fields
-  image?: string;
-  data?: string;
-  mimeType?: string;
-  url?: string;
+function getToolStatus(state?: string, hasOutput?: boolean): "pending" | "running" | "complete" | "error" {
+  if (state === "output-available" || state === "complete" || hasOutput) return "complete";
+  if (state === "output-error" || state === "error") return "error";
+  if (state === "input-streaming" || state === "input-available" || state === "running" || state === "pending") return "running";
+  // If we have output but no state, it's complete
+  if (hasOutput) return "complete";
+  return "pending";
 }
 
-// Tool invocation format from @convex-dev/agent
-interface MessageToolInvocation {
-  type?: "tool-invocation" | "tool-result";
-  toolName: string;
-  toolCallId: string;
-  state?: string;
-  args?: Record<string, unknown>;
-  result?: unknown;
-  // Additional fields from @convex-dev/agent
-  input?: Record<string, unknown>;
-  output?: unknown;
-}
+// Debug helper - set to true to see part structure in console
+const DEBUG_PARTS = true;
 
-function getToolStatus(part: MessageToolInvocation): "pending" | "running" | "complete" | "error" {
-  // @convex-dev/agent tool states: "input-streaming", "input-available", "output-available", "output-error"
-  const state = part.state;
-  switch (state) {
-    case "output-available":
-    case "result":
-      return "complete";
-    case "output-error":
-      return "error";
-    case "input-streaming":
-    case "input-available":
-    case "call":
-    case "partial-call":
-      return "running";
-    default:
-      // If output exists, it's complete
-      if (part.output !== undefined || part.result !== undefined) {
-        return "complete";
-      }
-      return "pending";
-  }
-}
-
-export const Message = memo(({
+/**
+ * PreviewMessage - Midday-style message component
+ * 
+ * Renders messages with proper interleaving of:
+ * - Text (via Streamdown/Response)
+ * - Tool calls (via ToolView)
+ * - Reasoning (collapsible)
+ */
+export const PreviewMessage = memo(({
   role,
   parts,
   attachments,
@@ -93,123 +67,204 @@ export const Message = memo(({
   attachments?: Array<MessageAttachment>;
   isStreaming?: boolean;
 }) => {
-  // Render parts in order - interleaving text and tool calls as they appear
-  const renderParts = () => {
-    if (!parts || parts.length === 0) return null;
-    
-    return parts.map((part, index) => {
-      const key = part.toolCallId || `part-${index}`;
-      
-      // Reasoning part
-      if (part.type === "reasoning" && part.text?.trim()) {
-        return (
-          <Reasoning key={key} isStreaming={isStreaming && index === parts.length - 1} defaultOpen={isStreaming}>
-            <ReasoningTrigger />
-            <ReasoningContent>{part.text}</ReasoningContent>
-          </Reasoning>
-        );
-      }
-      
-      // Text part
-      if (part.type === "text" && part.text) {
-        const isLastPart = index === parts.length - 1;
-        return (
-          <div key={key} className="text-chocolate-800 dark:text-chocolate-300 flex flex-col gap-4 prose prose-sm dark:prose-invert max-w-none">
-            <Streamdown>{part.text}</Streamdown>
-            {isStreaming && isLastPart && <StreamingIndicator />}
-          </div>
-        );
-      }
-      
-      // Tool part - type is "tool-<toolName>"
-      if (part.type?.startsWith("tool-")) {
-        const toolName = part.type.replace("tool-", "");
-        const toolInvocation: MessageToolInvocation = {
-          toolName,
-          toolCallId: part.toolCallId || key,
-          state: part.state,
-          input: part.input,
-          output: part.output,
-        };
-        const status = getToolStatus(toolInvocation);
-        const args = part.input || {};
-        const result = part.output;
+  // Handle user messages - simple text display
+  if (role === "user") {
+    const textContent = parts?.filter(p => p.type === "text").map(p => p.text || "").join("") || "";
+    return (
+      <Message from="user">
+        <MessageContent>{textContent || "..."}</MessageContent>
+      </Message>
+    );
+  }
 
-        // Wrap tool views with BlurFade animation (BrowseGPT pattern)
-        return (
-          <BlurFade key={key} delay={index * 0.05}>
-            <ToolView
-              toolName={toolName}
-              args={args}
-              result={result as Record<string, unknown> | undefined}
-              status={status}
-            />
-          </BlurFade>
-        );
-      }
+  // Handle assistant messages - full interleaved rendering
+  if (!parts || parts.length === 0) {
+    return (
+      <Message from="assistant">
+        <MessageContent>
+          <span className="text-muted-foreground">...</span>
+        </MessageContent>
+      </Message>
+    );
+  }
 
-      // Image part - inline images in message content
-      if (part.type === "image" || part.type?.startsWith("image/")) {
-        const imageItems = extractImageParts([part]);
-        if (imageItems.length > 0) {
-          return (
-            <BlurFade key={key} delay={index * 0.05}>
-              <ThreadImageGallery items={imageItems} />
-            </BlurFade>
-          );
-        }
-      }
-      
-      return null;
-    });
+  // Group consecutive text parts, but render tool and reasoning inline
+  const elements: React.ReactNode[] = [];
+  let textBuffer = "";
+
+  const flushTextBuffer = () => {
+    if (textBuffer.trim()) {
+      elements.push(
+        <div key={`text-${elements.length}`} className="text-[#666666] dark:text-[#999999] my-1">
+          <Response>{textBuffer}</Response>
+        </div>
+      );
+      textBuffer = "";
+    }
   };
 
-  // Extract image attachments from the attachments array
-  const imageAttachments = extractImageAttachments(attachments);
-  
-  // Filter non-image attachments for PreviewAttachment
-  const nonImageAttachments = attachments?.filter(att => {
-    const type = att.contentType || att.mediaType || "";
-    const name = att.name || att.fileName || "";
-    const isImage = type.startsWith("image/") || /\.(png|jpe?g|gif|webp)$/i.test(name);
-    return !isImage;
-  }) || [];
+  // Debug: log parts structure - ALWAYS log when debug is enabled
+  if (DEBUG_PARTS) {
+    console.log('[PreviewMessage] Received parts:', {
+      partsCount: parts.length,
+      partTypes: parts.map(p => p.type),
+      fullParts: parts.map(p => ({ 
+        type: p.type, 
+        hasText: !!p.text, 
+        textPreview: p.text?.substring(0, 50),
+        hasOutput: !!p.output, 
+        hasInput: !!p.input,
+        hasArgs: !!p.args,
+        state: p.state,
+        toolName: p.toolName,
+        toolCallId: p.toolCallId,
+      }))
+    });
+  }
+
+  parts.forEach((part, index) => {
+    const key = part.toolCallId || `part-${index}`;
+
+    // Skip internal/system parts
+    if (part.type === "step-start" || part.type === "step-finish") return;
+
+    // Text parts - buffer them
+    if (part.type === "text" && part.text) {
+      textBuffer += part.text;
+      return;
+    }
+
+    // Non-text parts - flush buffer first, then render
+    flushTextBuffer();
+
+    // Reasoning/Thinking part (multiple formats)
+    const reasoningText = part.type === "reasoning" ? part.text : 
+                          part.type === "thinking" ? (part.text || part.thinking) :
+                          (part.reasoning || part.thinking);
+    if ((part.type === "reasoning" || part.type === "thinking" || part.reasoning || part.thinking) && reasoningText?.trim()) {
+      elements.push(
+        <div key={key} className="my-3">
+          <Reasoning 
+            isStreaming={isStreaming && index === parts.length - 1} 
+            defaultOpen={isStreaming}
+          >
+            <ReasoningTrigger />
+            <ReasoningContent>{reasoningText}</ReasoningContent>
+          </Reasoning>
+        </div>
+      );
+      return;
+    }
+
+    // Tool part: "tool-<toolName>" format (Convex agent SDK)
+    // This handles: tool-webSearch, tool-getWeather, tool-createDocument, etc.
+    if (part.type?.startsWith("tool-") && part.type !== "tool-call" && part.type !== "tool-result" && part.type !== "tool-invocation") {
+      const toolName = part.type.replace("tool-", "");
+      elements.push(
+        <div key={key} className="my-2">
+          <ToolView
+            toolName={toolName}
+            args={part.input || part.args || {}}
+            result={part.output as Record<string, unknown> | undefined}
+            status={getToolStatus(part.state, !!part.output)}
+          />
+        </div>
+      );
+      return;
+    }
+
+    // Tool invocation (Convex agent format)
+    if (part.type === "tool-invocation" || part.type === "tool_use") {
+      const toolName = part.toolName || part.name || "unknown";
+      elements.push(
+        <div key={key} className="my-2">
+          <ToolView
+            toolName={toolName}
+            args={part.input || part.args || {}}
+            result={part.output as Record<string, unknown> | undefined}
+            status={getToolStatus(part.state, !!part.output)}
+          />
+        </div>
+      );
+      return;
+    }
+
+    // Tool call (AI SDK format)
+    if (part.type === "tool-call" && (part.toolName || part.name)) {
+      elements.push(
+        <div key={key} className="my-2">
+          <ToolView
+            toolName={part.toolName || part.name || "tool"}
+            args={part.input || part.args || {}}
+            result={part.output as Record<string, unknown> | undefined}
+            status={getToolStatus(part.state, !!part.output)}
+          />
+        </div>
+      );
+      return;
+    }
+
+    // Tool result (AI SDK format)
+    if (part.type === "tool-result" && (part.toolName || part.name)) {
+      const outputValue = (part.output as any)?.value ?? part.output ?? part.result;
+      elements.push(
+        <div key={key} className="my-2">
+          <ToolView
+            toolName={part.toolName || part.name || "tool"}
+            args={part.input || part.args || {}}
+            result={outputValue as Record<string, unknown> | undefined}
+            status="complete"
+          />
+        </div>
+      );
+      return;
+    }
+
+    // Image part
+    if (part.type === "image" && (part.image || part.data || part.url)) {
+      const src = part.url || (part.image ? `data:${part.mimeType || "image/png"};base64,${part.image}` : part.data);
+      elements.push(
+        <div key={key} className="rounded-lg overflow-hidden max-w-md my-2">
+          <img src={src} alt="Generated" className="w-full h-auto" />
+        </div>
+      );
+      return;
+    }
+
+    // File part (attachments)
+    if (part.type === "file" && part.url) {
+      elements.push(
+        <div key={key} className="my-2 p-3 bg-muted rounded-lg flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">📎 File attachment</span>
+          <a href={part.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
+            View
+          </a>
+        </div>
+      );
+      return;
+    }
+
+    // Unknown part type - log for debugging but don't crash
+    if (DEBUG_PARTS) {
+      console.log('[PreviewMessage] Unknown part type:', part.type, part);
+    }
+  });
+
+  // Flush any remaining text
+  flushTextBuffer();
 
   return (
-    <motion.div
-      className={`flex flex-row gap-4 w-full first-of-type:pt-20`}
-      initial={{ y: 5, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-    >
-      <div className="size-[24px] border rounded-sm p-1 flex flex-col justify-center items-center shrink-0 text-chocolate-500">
-        {role === "assistant" ? <BotIcon /> : <UserIcon />}
-      </div>
-
-      <div className="flex flex-col gap-2 w-full">
-        {/* Render all parts in order - text, tools, and reasoning interleaved */}
-        {renderParts()}
-
-        {/* Image Attachments - rendered using AI Elements Image component */}
-        {imageAttachments.length > 0 && (
-          <BlurFade delay={0.1}>
-            <ThreadImageGallery items={imageAttachments} className="mt-2" />
-          </BlurFade>
-        )}
-
-        {/* Non-image Attachments (PDFs, documents, etc.) */}
-        {nonImageAttachments.length > 0 && (
-          <div className="flex flex-row gap-2 mt-2">
-            {nonImageAttachments.map((attachment, idx) => (
-              <PreviewAttachment 
-                key={attachment.url || attachment.file_id || `att-${idx}`} 
-                attachment={attachment as any} 
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </motion.div>
+    <Message from="assistant">
+      <MessageContent className="w-full max-w-none">
+        <div className="flex flex-col gap-4">
+          {elements}
+        </div>
+      </MessageContent>
+    </Message>
   );
 });
 
-Message.displayName = "Message";
+PreviewMessage.displayName = "PreviewMessage";
+
+// Export as both names for compatibility
+export { PreviewMessage as Message };
