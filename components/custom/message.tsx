@@ -12,7 +12,7 @@ interface MessagePart {
   text?: string;
   toolCallId?: string;
   toolName?: string;
-  name?: string; // Alternative tool name field
+  name?: string;
   state?: string;
   input?: Record<string, unknown>;
   args?: Record<string, unknown>;
@@ -22,7 +22,6 @@ interface MessagePart {
   data?: string;
   mimeType?: string;
   url?: string;
-  // Reasoning fields
   reasoning?: string;
   thinking?: string;
 }
@@ -39,21 +38,17 @@ function getToolStatus(state?: string, hasOutput?: boolean): "pending" | "runnin
   if (state === "output-available" || state === "complete" || hasOutput) return "complete";
   if (state === "output-error" || state === "error") return "error";
   if (state === "input-streaming" || state === "input-available" || state === "running" || state === "pending") return "running";
-  // If we have output but no state, it's complete
   if (hasOutput) return "complete";
   return "pending";
 }
 
-// Debug helper - set to true to see part structure in console
-const DEBUG_PARTS = true;
+const DEBUG_PARTS = false; // Set to true for debugging
 
 /**
- * PreviewMessage - Midday-style message component
- * 
- * Renders messages with proper interleaving of:
- * - Text (via Streamdown/Response)
- * - Tool calls (via ToolView)
- * - Reasoning (collapsible)
+ * PreviewMessage - Renders messages with proper ordering:
+ * 1. Reasoning/Thinking (FIRST - above text)
+ * 2. Text content
+ * 3. Tool calls/results
  */
 export const PreviewMessage = memo(({
   role,
@@ -67,7 +62,7 @@ export const PreviewMessage = memo(({
   attachments?: Array<MessageAttachment>;
   isStreaming?: boolean;
 }) => {
-  // Handle user messages - simple text display
+  // Handle user messages
   if (role === "user") {
     const textContent = parts?.filter(p => p.type === "text").map(p => p.text || "").join("") || "";
     return (
@@ -77,7 +72,7 @@ export const PreviewMessage = memo(({
     );
   }
 
-  // Handle assistant messages - full interleaved rendering
+  // Handle assistant messages
   if (!parts || parts.length === 0) {
     return (
       <Message from="assistant">
@@ -88,62 +83,29 @@ export const PreviewMessage = memo(({
     );
   }
 
-  // Group consecutive text parts, but render tool and reasoning inline
-  const elements: React.ReactNode[] = [];
-  let textBuffer = "";
-
-  const flushTextBuffer = () => {
-    if (textBuffer.trim()) {
-      elements.push(
-        <div key={`text-${elements.length}`} className="text-[#666666] dark:text-[#999999] my-1">
-          <Response>{textBuffer}</Response>
-        </div>
-      );
-      textBuffer = "";
-    }
-  };
-
-  // Debug: log parts structure - ALWAYS log when debug is enabled
   if (DEBUG_PARTS) {
-    console.log('[PreviewMessage] Received parts:', {
-      partsCount: parts.length,
-      partTypes: parts.map(p => p.type),
-      fullParts: parts.map(p => ({ 
-        type: p.type, 
-        hasText: !!p.text, 
-        textPreview: p.text?.substring(0, 50),
-        hasOutput: !!p.output, 
-        hasInput: !!p.input,
-        hasArgs: !!p.args,
-        state: p.state,
-        toolName: p.toolName,
-        toolCallId: p.toolCallId,
-      }))
-    });
+    console.log('[PreviewMessage] Parts:', parts.map(p => ({ type: p.type, text: p.text?.slice(0, 50) })));
   }
+
+  // Separate parts into categories for proper ordering
+  const reasoningElements: React.ReactNode[] = [];
+  const textParts: string[] = [];
+  const toolElements: React.ReactNode[] = [];
+  const otherElements: React.ReactNode[] = [];
 
   parts.forEach((part, index) => {
     const key = part.toolCallId || `part-${index}`;
 
-    // Skip internal/system parts
+    // Skip internal parts
     if (part.type === "step-start" || part.type === "step-finish") return;
 
-    // Text parts - buffer them
-    if (part.type === "text" && part.text) {
-      textBuffer += part.text;
-      return;
-    }
-
-    // Non-text parts - flush buffer first, then render
-    flushTextBuffer();
-
-    // Reasoning/Thinking part (multiple formats)
+    // Reasoning/Thinking - goes FIRST
     const reasoningText = part.type === "reasoning" ? part.text : 
                           part.type === "thinking" ? (part.text || part.thinking) :
                           (part.reasoning || part.thinking);
     if ((part.type === "reasoning" || part.type === "thinking" || part.reasoning || part.thinking) && reasoningText?.trim()) {
-      elements.push(
-        <div key={key} className="my-3">
+      reasoningElements.push(
+        <div key={key} className="mb-3">
           <Reasoning 
             isStreaming={isStreaming && index === parts.length - 1} 
             defaultOpen={isStreaming}
@@ -156,11 +118,16 @@ export const PreviewMessage = memo(({
       return;
     }
 
-    // Tool part: "tool-<toolName>" format (Convex agent SDK)
-    // This handles: tool-webSearch, tool-getWeather, tool-createDocument, etc.
+    // Text parts - collect for rendering after reasoning
+    if (part.type === "text" && part.text) {
+      textParts.push(part.text);
+      return;
+    }
+
+    // Tool parts - render after text
     if (part.type?.startsWith("tool-") && part.type !== "tool-call" && part.type !== "tool-result" && part.type !== "tool-invocation") {
       const toolName = part.type.replace("tool-", "");
-      elements.push(
+      toolElements.push(
         <div key={key} className="my-2">
           <ToolView
             toolName={toolName}
@@ -173,10 +140,9 @@ export const PreviewMessage = memo(({
       return;
     }
 
-    // Tool invocation (Convex agent format)
     if (part.type === "tool-invocation" || part.type === "tool_use") {
       const toolName = part.toolName || part.name || "unknown";
-      elements.push(
+      toolElements.push(
         <div key={key} className="my-2">
           <ToolView
             toolName={toolName}
@@ -189,9 +155,8 @@ export const PreviewMessage = memo(({
       return;
     }
 
-    // Tool call (AI SDK format)
     if (part.type === "tool-call" && (part.toolName || part.name)) {
-      elements.push(
+      toolElements.push(
         <div key={key} className="my-2">
           <ToolView
             toolName={part.toolName || part.name || "tool"}
@@ -204,10 +169,9 @@ export const PreviewMessage = memo(({
       return;
     }
 
-    // Tool result (AI SDK format)
     if (part.type === "tool-result" && (part.toolName || part.name)) {
       const outputValue = (part.output as any)?.value ?? part.output ?? part.result;
-      elements.push(
+      toolElements.push(
         <div key={key} className="my-2">
           <ToolView
             toolName={part.toolName || part.name || "tool"}
@@ -223,7 +187,7 @@ export const PreviewMessage = memo(({
     // Image part
     if (part.type === "image" && (part.image || part.data || part.url)) {
       const src = part.url || (part.image ? `data:${part.mimeType || "image/png"};base64,${part.image}` : part.data);
-      elements.push(
+      otherElements.push(
         <div key={key} className="rounded-lg overflow-hidden max-w-md my-2">
           <img src={src} alt="Generated" className="w-full h-auto" />
         </div>
@@ -231,9 +195,9 @@ export const PreviewMessage = memo(({
       return;
     }
 
-    // File part (attachments)
+    // File part
     if (part.type === "file" && part.url) {
-      elements.push(
+      otherElements.push(
         <div key={key} className="my-2 p-3 bg-muted rounded-lg flex items-center gap-2">
           <span className="text-sm text-muted-foreground">📎 File attachment</span>
           <a href={part.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
@@ -243,21 +207,30 @@ export const PreviewMessage = memo(({
       );
       return;
     }
-
-    // Unknown part type - log for debugging but don't crash
-    if (DEBUG_PARTS) {
-      console.log('[PreviewMessage] Unknown part type:', part.type, part);
-    }
   });
 
-  // Flush any remaining text
-  flushTextBuffer();
+  // Combine text parts
+  const combinedText = textParts.join("");
 
   return (
     <Message from="assistant">
       <MessageContent className="w-full max-w-none">
-        <div className="flex flex-col gap-4">
-          {elements}
+        <div className="flex flex-col gap-2">
+          {/* 1. Reasoning FIRST (above text) */}
+          {reasoningElements}
+          
+          {/* 2. Text content */}
+          {combinedText && (
+            <div className="text-[#666666] dark:text-[#999999]">
+              <Response>{combinedText}</Response>
+            </div>
+          )}
+          
+          {/* 3. Tool calls/results */}
+          {toolElements}
+          
+          {/* 4. Other elements (images, files) */}
+          {otherElements}
         </div>
       </MessageContent>
     </Message>
@@ -266,5 +239,4 @@ export const PreviewMessage = memo(({
 
 PreviewMessage.displayName = "PreviewMessage";
 
-// Export as both names for compatibility
 export { PreviewMessage as Message };

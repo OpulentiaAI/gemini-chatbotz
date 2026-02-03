@@ -30,7 +30,7 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { Sparkles, PenLine, GraduationCap, Code, Sparkle, Loader2, Zap, Settings } from "lucide-react";
 import Link from "next/link";
-import { useArtifactSelector } from "@/hooks/use-artifact";
+import { useArtifactSelector, useArtifact } from "@/hooks/use-artifact";
 import { ArtifactPanel } from "@/components/custom/artifact-panel";
 import { Button } from "@/components/ui/button";
 import {
@@ -238,6 +238,22 @@ export function ChatInterface({
 
   const isSignedOut = !session?.user?.id;
   const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
+  const { openArtifact, closeArtifact } = useArtifact();
+
+  const handleCodeButtonClick = () => {
+    if (isArtifactVisible) {
+      closeArtifact();
+    } else {
+      openArtifact({
+        documentId: `code-${Date.now()}`,
+        title: "Code Editor",
+        content: "// Start coding here...\n",
+        kind: "code",
+        messageId: "",
+        language: "typescript",
+      });
+    }
+  };
   const hasMessages = messages.length > 0;
 
   const getStatus = () => {
@@ -271,6 +287,23 @@ export function ChatInterface({
         <PromptInputToolbar>
           <PromptInputTools>
             <PromptInputActionAddAttachments />
+            
+            {/* Code button - opens artifact panel */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleCodeButtonClick}
+              className={cn(
+                "h-8 px-2 text-xs gap-1.5",
+                isArtifactVisible 
+                  ? "bg-primary/10 text-primary" 
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Code className="size-4" />
+              Code
+            </Button>
             
             {/* Lightning button for quick suggestions */}
             <DropdownMenu open={showQuickSuggestions} onOpenChange={setShowQuickSuggestions}>
